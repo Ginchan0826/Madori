@@ -1,0 +1,161 @@
+body {
+  font-family: sans-serif;
+  background-color: #f7f7f7;
+  margin: 0;
+  padding: 20px;
+  color: #333;
+  height: 100vh;
+  box-sizing: border-box;
+}
+
+.container {
+  display: flex;
+  max-width: 1400px;
+  margin: auto;
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 0 12px rgba(0, 0, 0, 0.12);
+  height: 90vh;
+  gap: 20px;
+  box-sizing: border-box;
+}
+
+.left-pane {
+  flex-basis: 30%;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.left-pane h1,
+.left-pane h2 {
+  margin-top: 1em;
+}
+
+#preview {
+  margin-top: 10px;
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+}
+
+/* ボタン */
+button {
+  padding: 8px 16px;
+  font-size: 14px;
+  margin-top: 10px;
+  background-color: #008cff;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  align-self: flex-start;
+  transition: background-color 0.2s;
+}
+
+button:hover:not(:disabled) {
+  background-color: #0070c0;
+}
+
+button:disabled {
+  background-color: #a0a0a0;
+  cursor: default;
+}
+
+/* 解析結果折りたたみ見出し */
+.collapsible-header {
+  cursor: pointer;
+  background-color: #e0e0e0;
+  padding: 8px;
+  border-radius: 6px;
+  user-select: none;
+  transition: background 0.2s;
+  margin-top: 1.5em;
+}
+.collapsible-header:hover {
+  background-color: #d0d0d0;
+}
+
+/* 折りたたみコンテナ */
+#result-container {
+  overflow-y: auto;
+  max-height: 0;
+  transition: max-height 0.3s ease, padding 0.3s ease;
+  margin-top: 0.5em;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  background: #fafafa;
+  padding: 0 10px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 13px;
+  font-family: Consolas, monospace;
+  color: #222;
+}
+
+#result-container.expanded {
+  max-height: 500px;
+  padding: 10px;
+}
+
+/* 3D表示エリア */
+.right-pane {
+  flex-basis: 70%;
+  display: flex;
+  flex-direction: column;
+}
+
+.three-canvas {
+  flex-grow: 1;
+  background: #ddd;
+  border-radius: 8px;
+  overflow: hidden;
+}
+/* 折りたたみコンテナ共通 */
+.collapsible-header {
+  cursor: pointer;
+  background-color: #e0e0e0;
+  padding: 8px;
+  border-radius: 6px;
+  user-select: none;
+  transition: background 0.2s;
+  margin-top: 1.5em;
+}
+.collapsible-header:hover {
+  background-color: #d0d0d0;
+}
+
+#upload-container,
+#result-container {
+  overflow-y: auto;
+  max-height: 0;
+  transition: max-height 0.3s ease, padding 0.3s ease;
+  margin-top: 0.5em;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  background: #fafafa;
+  padding: 0 10px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 13px;
+  font-family: Consolas, monospace;
+  color: #222;
+}
+
+#upload-container.expanded,
+#result-container.expanded {
+  max-height: 500px;
+  padding: 10px;
+}
+
+/* アップロード画像は最大幅100%、高さ自動 */
+#preview {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: auto;
+  border-radius: 8px;
+  border: none;
+}
