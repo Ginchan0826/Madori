@@ -159,3 +159,8 @@ button:disabled {
   border-radius: 8px;
   border: none;
 }
+#status {
+  margin-top: 10px;
+  font-weight: bold;
+  color: green;
+}
