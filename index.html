@@ -2,28 +2,32 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <title>間取り分析＆3D表示</title>
+  <title>間取り分析＆3D表示 + Drive保存</title>
   <link rel="stylesheet" href="style.css" />
   <script src="https://cdn.jsdelivr.net/npm/three@0.157.0/build/three.min.js"></script>
+  <script src="https://apis.google.com/js/api.js"></script>
 </head>
 <body>
   <div class="container">
     <!-- 左:幅30% -->
-<div class="left-pane">
-  <h1>間取り画像を選んで分析</h1>
-  <input type="file" id="imageInput" accept="image/*" />
-  <button id="analyzeBtn" onclick="analyzeImage()">Roboflowで分析</button>
+    <div class="left-pane">
+      <h1>間取り画像を選んで分析</h1>
+      <button onclick="initGoogleAPI()">Googleにログイン</button>
+      <input type="file" id="imageInput" accept="image/*" />
+      <button id="analyzeBtn" onclick="analyzeImage()">Roboflowで分析</button>
+      <button onclick="uploadToDrive()">Google Driveに保存</button>
+      <p id="status"></p>
 
-  <h2 class="collapsible-header" id="upload-header">アップロード画像</h2>
-  <div id="upload-container" class="collapsed">
-    <img id="preview" alt="アップロード画像" />
-  </div>
+      <h2 class="collapsible-header" id="upload-header">アップロード画像</h2>
+      <div id="upload-container" class="collapsed">
+        <img id="preview" alt="アップロード画像" />
+      </div>
 
-  <h2 class="collapsible-header" id="result-header">分析結果（JSON）</h2>
-  <div id="result-container" class="collapsed">
-    <pre id="result">まだ分析されていません</pre>
-  </div>
-</div>
+      <h2 class="collapsible-header" id="result-header">分析結果（JSON）</h2>
+      <div id="result-container" class="collapsed">
+        <pre id="result">まだ分析されていません</pre>
+      </div>
+    </div>
 
     <!-- 右:幅70% -->
     <div class="right-pane">
@@ -35,4 +39,3 @@
   <script src="script.js"></script>
 </body>
 </html>
-
