@@ -7,6 +7,42 @@ document.addEventListener("DOMContentLoaded", () => {
   const previewImg = document.getElementById("preview");
   const resultPre = document.getElementById("result");
 
+  google.accounts.oauth2.initTokenClient({
+  client_id: '479474446026-kej6f40kvfm6dsuvfeo5d4fm87c6god4.apps.googleusercontent.com',
+  scope: 'https://www.googleapis.com/auth/drive.file',
+  callback: (tokenResponse) => {
+    const accessToken = tokenResponse.access_token;
+    uploadToDrive(accessToken, yourJsonObject);
+  }
+}).requestAccessToken();
+function uploadToDrive(accessToken, jsonData) {
+  const metadata = {
+    name: 'room_analysis.json',
+    mimeType: 'application/json'
+  };
+
+  const file = new Blob([JSON.stringify(jsonData)], { type: 'application/json' });
+  const form = new FormData();
+  form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+  form.append('file', file);
+
+  fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+    method: 'POST',
+    headers: new Headers({ 'Authorization': 'Bearer ' + accessToken }),
+    body: form
+  })
+    .then(res => res.json())
+    .then(result => {
+      console.log('Drive保存完了', result);
+      alert('保存完了！');
+    })
+    .catch(err => {
+      console.error('Drive保存エラー', err);
+    });
+}
+
+
+
   // 初期折りたたみ状態
   uploadContainer.classList.remove("expanded");
   uploadContainer.classList.add("collapsed");
