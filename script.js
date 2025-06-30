@@ -28,6 +28,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const saveBtn = document.getElementById("saveBtn");
   const loadBtn = document.getElementById("loadBtn");
+  
+analyzeBtn.addEventListener("click", analyzeImage);
 
   function openContainer(container) {
     container.classList.remove("collapsed");
