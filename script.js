@@ -75,6 +75,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let loadingInterval;
 
   window.analyzeImage = async () => {
+     console.log("analyzeImageが呼ばれました");
     if (!selectedFile) {
       alert("画像を選択してください");
       return;
