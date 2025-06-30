@@ -6,6 +6,70 @@ document.addEventListener("DOMContentLoaded", () => {
   const analyzeBtn = document.getElementById("analyzeBtn");
   const previewImg = document.getElementById("preview");
   const resultPre = document.getElementById("result");
+  const CLIENT_ID = '763926845208-bl7kvhg0tq4q99uepvckpcmgvhe4hvme.apps.googleusercontent.com';
+  const SCOPES = 'https://www.googleapis.com/auth/drive.file';
+
+let imageFile = null;
+let resultJson = { sample: "これは仮のJSONです", time: new Date().toISOString() };
+
+function initGoogleAPI() {
+  gapi.load('client:auth2', async () => {
+    await gapi.client.init({ clientId: CLIENT_ID, scope: SCOPES });
+    await gapi.auth2.getAuthInstance().signIn();
+    alert("ログイン成功！");
+  });
+}
+
+document.getElementById('imageInput').addEventListener('change', (e) => {
+  imageFile = e.target.files[0];
+});
+
+async function uploadData() {
+  if (!imageFile) {
+    alert("画像を選択してください");
+    return;
+  }
+
+  const accessToken = gapi.auth.getToken().access_token;
+
+  // 画像のアップロード
+  const imageMetadata = {
+    name: imageFile.name,
+    mimeType: imageFile.type
+  };
+  const imageForm = new FormData();
+  imageForm.append("metadata", new Blob([JSON.stringify(imageMetadata)], { type: "application/json" }));
+  imageForm.append("file", imageFile);
+
+  const imageRes = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart", {
+    method: "POST",
+    headers: new Headers({ Authorization: "Bearer " + accessToken }),
+    body: imageForm
+  });
+  const imageResult = await imageRes.json();
+  console.log("画像アップロード完了:", imageResult);
+
+  // JSONファイルアップロード
+  const jsonMetadata = {
+    name: imageFile.name.replace(/\.\w+$/, ".json"),
+    mimeType: "application/json"
+  };
+  const jsonBlob = new Blob([JSON.stringify(resultJson, null, 2)], { type: "application/json" });
+  const jsonForm = new FormData();
+  jsonForm.append("metadata", new Blob([JSON.stringify(jsonMetadata)], { type: "application/json" }));
+  jsonForm.append("file", jsonBlob);
+
+  const jsonRes = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart", {
+    method: "POST",
+    headers: new Headers({ Authorization: "Bearer " + accessToken }),
+    body: jsonForm
+  });
+  const jsonResult = await jsonRes.json();
+  console.log("JSONアップロード完了:", jsonResult);
+
+  alert("画像とJSONをGoogle Driveに保存しました！");
+}
+
 
   // 初期折りたたみ状態
   uploadContainer.classList.remove("expanded");
