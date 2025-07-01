@@ -71,6 +71,12 @@ document.addEventListener("DOMContentLoaded", () => {
     reader.readAsDataURL(selectedFile);
   });
 
+  document.getElementById("logoutBtn").addEventListener("click", () => {
+  google.accounts.id.disableAutoSelect();
+  accessToken = null;
+  alert("ログアウトしました。ページをリロードすると再ログインできます。");
+});
+
   const loadingText = document.createElement("div");
   loadingText.style.color = "#008cff";
   loadingText.style.fontWeight = "bold";
