@@ -9,12 +9,15 @@
 </head>
 <body>
   <div class="container">
-    <!-- 左: 幅30% -->
     <div class="left-pane">
       <h1>間取り画像を選んで分析</h1>
       <input type="file" id="imageInput" accept="image/*" />
-      <button id="analyzeBtn" onclick="analyzeImage()">Roboflowで分析</button>
+      <input id="filenameInput" type="text" placeholder="保存名を入力" class="text-input" />
+      <button id="analyzeBtn" class="btn-analyze">Roboflowで分析</button>
       <button id="saveBtn" class="btn-save">Driveに保存</button>
+      <select id="fileSelect" class="select-input">
+        <option value="">読み込むファイルを選択</option>
+      </select>
       <button id="loadBtn" class="btn-login">Driveから読み込み</button>
 
       <h2 class="collapsible-header" id="upload-header">アップロード画像</h2>
@@ -28,14 +31,12 @@
       </div>
     </div>
 
-    <!-- 右: 幅70% -->
     <div class="right-pane">
       <h2>3D表示</h2>
       <div id="three-container" class="three-canvas"></div>
     </div>
   </div>
 
-  <!-- Google Login -->
   <div id="g_id_onload"
        data-client_id="479474446026-kej6f40kvfm6dsuvfeo5d4fm87c6god4.apps.googleusercontent.com"
        data-callback="handleCredentialResponse"
