@@ -208,7 +208,7 @@ function draw3D(predictions, imageWidth, imageHeight) {
   controls.update();
 
   const scale = 0.01;
-  const wallHeight = 1.0;
+  const wallHeight = 0.5;
   const thinHeight = 0.1;
 
   const classColors = {
