@@ -197,11 +197,11 @@ function draw3D(predictions, imageWidth, imageHeight) {
   container.innerHTML = "";
 
   renderer.setSize(container.clientWidth, container.clientHeight || 600);
-  renderer.setClearColor(0x000000); // 背景黒（任意で変更可）
   container.appendChild(renderer.domElement);
+
   const scale = 0.01;
-  const wallHeight = 0.5;
-  const thinHeight = 0.1;
+  const wallHeight = 1.0; // ← 壁の高さ（1メートル相当）
+  const thinHeight = 0.1; // ← 他の要素の高さ
 
   const classColors = {
     wall: 0xaaaaaa,
@@ -210,6 +210,7 @@ function draw3D(predictions, imageWidth, imageHeight) {
     window: 0x1e90ff,
     closet: 0xffa500,
     fusuma: 0xda70d6
+    // "left side" などは描画しないため省略可
   };
 
   const hiddenClasses = new Set(["left side", "right side", "top side", "under side"]);
@@ -235,24 +236,24 @@ function draw3D(predictions, imageWidth, imageHeight) {
 
     const mesh = new THREE.Mesh(geometry, material);
     mesh.position.x = (pred.x - imageWidth / 2) * scale;
-    mesh.position.y = boxHeight / 2;
+    mesh.position.y = boxHeight / 2; // 床から浮かせて設置
     mesh.position.z = -(pred.y - imageHeight / 2) * scale;
 
     scene.add(mesh);
   });
 
-  // 環境光と平行光
+  // 環境光と平行光を追加（見た目改善）
   scene.add(new THREE.AmbientLight(0xffffff, 0.5));
   const light = new THREE.DirectionalLight(0xffffff, 0.8);
   light.position.set(5, 10, 7).normalize();
   scene.add(light);
 
-  // アニメーションループ
+  // アニメーション
   (function animate() {
     requestAnimationFrame(animate);
-    controls.update(); // ✅ コントロール更新
     renderer.render(scene, camera);
   })();
 }
+
 
 });
