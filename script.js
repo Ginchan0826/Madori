@@ -187,45 +187,71 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function draw3D(predictions, imageWidth, imageHeight) {
-    const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(75, 1.5, 0.1, 1000);
-    camera.position.set(3.2, 3.2, 3.2);
-    camera.lookAt(0, 0, 0);
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(75, 1.5, 0.1, 1000);
+  camera.position.set(5, 5, 5);
+  camera.lookAt(0, 0, 0);
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
-    const container = document.getElementById("three-container");
-    container.innerHTML = "";
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  const container = document.getElementById("three-container");
+  container.innerHTML = "";
 
-    renderer.setSize(container.clientWidth, container.clientHeight || 600);
-    container.appendChild(renderer.domElement);
+  renderer.setSize(container.clientWidth, container.clientHeight || 600);
+  container.appendChild(renderer.domElement);
 
-    const scale = 0.01;
-    const classColors = {
-      "left side": 0xffffff, "right side": 0xffffff, "top side": 0xffffff, "under side": 0xffffff,
-      wall: 0xaaaaaa, door: 0x8b4513, "glass door": 0x87cefa,
-      window: 0x1e90ff, closet: 0xffa500, fusuma: 0xda70d6,
-    };
+  const scale = 0.01;
+  const wallHeight = 1.0; // ← 壁の高さ（1メートル相当）
+  const thinHeight = 0.1; // ← 他の要素の高さ
 
-    predictions.forEach((pred) => {
-      const geometry = new THREE.BoxGeometry(
-        pred.width * scale, 0.1, pred.height * scale
-      );
-      const color = classColors[pred.class] || 0xffffff;
-      const material = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.7 });
-      const mesh = new THREE.Mesh(geometry, material);
-      mesh.position.x = (pred.x - imageWidth / 2) * scale;
-      mesh.position.y = 0;
-      mesh.position.z = -(pred.y - imageHeight / 2) * scale;
-      scene.add(mesh);
+  const classColors = {
+    wall: 0xaaaaaa,
+    door: 0x8b4513,
+    "glass door": 0x87cefa,
+    window: 0x1e90ff,
+    closet: 0xffa500,
+    fusuma: 0xda70d6
+    // "left side" などは描画しないため省略可
+  };
+
+  const hiddenClasses = new Set(["left side", "right side", "top side", "under side"]);
+
+  predictions.forEach((pred) => {
+    if (hiddenClasses.has(pred.class)) return;
+
+    const isWall = pred.class === "wall";
+    const boxHeight = isWall ? wallHeight : thinHeight;
+
+    const geometry = new THREE.BoxGeometry(
+      pred.width * scale,
+      boxHeight,
+      pred.height * scale
+    );
+
+    const color = classColors[pred.class] || 0xffffff;
+    const material = new THREE.MeshStandardMaterial({
+      color,
+      transparent: true,
+      opacity: 0.85
     });
 
-    const light = new THREE.DirectionalLight(0xffffff, 1);
-    light.position.set(0, 10, 10).normalize();
-    scene.add(light);
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.position.x = (pred.x - imageWidth / 2) * scale;
+    mesh.position.y = boxHeight / 2; // 床から浮かせて設置
+    mesh.position.z = -(pred.y - imageHeight / 2) * scale;
 
-    (function animate() {
-      requestAnimationFrame(animate);
-      renderer.render(scene, camera);
-    })();
-  }
+    scene.add(mesh);
+  });
+
+  // 環境光と平行光を追加（見た目改善）
+  scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+  const light = new THREE.DirectionalLight(0xffffff, 0.8);
+  light.position.set(5, 10, 7).normalize();
+  scene.add(light);
+
+  // アニメーション
+  (function animate() {
+    requestAnimationFrame(animate);
+    renderer.render(scene, camera);
+  })();
+}
 });
