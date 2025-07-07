@@ -199,14 +199,6 @@ function draw3D(predictions, imageWidth, imageHeight) {
   renderer.setSize(container.clientWidth, container.clientHeight || 600);
   renderer.setClearColor(0x000000); // 背景黒（任意で変更可）
   container.appendChild(renderer.domElement);
-
-  // ✅ OrbitControls を追加
-  const controls = new THREE.OrbitControls(camera, renderer.domElement);
-  controls.enableDamping = true; // 慣性あり操作
-  controls.dampingFactor = 0.05;
-  controls.target.set(0, 0, 0); // 中心を注視
-  controls.update();
-
   const scale = 0.01;
   const wallHeight = 0.5;
   const thinHeight = 0.1;
