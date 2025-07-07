@@ -13,7 +13,6 @@ function requestAccessToken() {
     callback: (tokenResponse) => {
       accessToken = tokenResponse.access_token;
       console.log("アクセストークン取得済");
-      updateFileSelect();
     }
   }).requestAccessToken();
 }
@@ -26,13 +25,10 @@ document.addEventListener("DOMContentLoaded", () => {
   const analyzeBtn = document.getElementById("analyzeBtn");
   const previewImg = document.getElementById("preview");
   const resultPre = document.getElementById("result");
+
   const saveBtn = document.getElementById("saveBtn");
   const loadBtn = document.getElementById("loadBtn");
 
-  const filenameInput = document.getElementById("filenameInput");
-  const fileSelect = document.getElementById("fileSelect");
-
-  analyzeBtn.addEventListener("click", analyzeImage);
 
   function openContainer(container) {
     container.classList.remove("collapsed");
@@ -71,8 +67,6 @@ document.addEventListener("DOMContentLoaded", () => {
     reader.readAsDataURL(selectedFile);
   });
 
-  
-
   const loadingText = document.createElement("div");
   loadingText.style.color = "#008cff";
   loadingText.style.fontWeight = "bold";
@@ -81,7 +75,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
   let loadingInterval;
 
-  async function analyzeImage() {
+  window.analyzeImage = async () => {
+     console.log("analyzeImageが呼ばれました");
     if (!selectedFile) {
       alert("画像を選択してください");
       return;
@@ -122,16 +117,13 @@ document.addEventListener("DOMContentLoaded", () => {
     } finally {
       analyzeBtn.disabled = false;
     }
-  }
+  };
 
   saveBtn.addEventListener("click", () => {
     if (!accessToken || !latestJson) return alert("ログインまたは解析が必要です");
 
-    const filename = filenameInput.value.trim();
-    if (!filename) return alert("保存名を入力してください");
-
     const metadata = {
-      name: `${filename}.json`,
+      name: 'room_analysis.json',
       mimeType: 'application/json'
     };
     const file = new Blob([JSON.stringify(latestJson)], { type: 'application/json' });
@@ -144,8 +136,7 @@ document.addEventListener("DOMContentLoaded", () => {
       headers: new Headers({ 'Authorization': 'Bearer ' + accessToken }),
       body: form
     }).then(res => res.json()).then(result => {
-      alert('保存完了');
-      updateFileSelect();
+      alert('Driveに保存完了');
     }).catch(err => {
       console.error(err);
       alert('保存失敗');
@@ -153,11 +144,18 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   loadBtn.addEventListener("click", () => {
-    const fileId = fileSelect.value;
-    if (!accessToken || !fileId) return alert("ログインまたはファイルを選択してください");
+    if (!accessToken) return alert("ログインしてください");
 
-    fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
+    fetch(`https://www.googleapis.com/drive/v3/files?q=name='room_analysis.json' and mimeType='application/json'`, {
       headers: new Headers({ 'Authorization': 'Bearer ' + accessToken })
+    }).then(res => res.json()).then(fileList => {
+      if (!fileList.files || fileList.files.length === 0) {
+        return alert('保存されたファイルが見つかりません');
+      }
+      const fileId = fileList.files[0].id;
+      return fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
+        headers: new Headers({ 'Authorization': 'Bearer ' + accessToken })
+      });
     }).then(res => res.json()).then(data => {
       latestJson = data;
       resultPre.textContent = JSON.stringify(data, null, 2);
@@ -170,23 +168,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
-  function updateFileSelect() {
-    if (!accessToken) return;
-
-    fetch(`https://www.googleapis.com/drive/v3/files?q=mimeType='application/json'`, {
-      headers: new Headers({ 'Authorization': 'Bearer ' + accessToken })
-    }).then(res => res.json()).then(fileList => {
-      fileSelect.innerHTML = `<option value="">読み込むファイルを選択</option>`;
-      fileList.files.forEach(file => {
-        const option = document.createElement("option");
-        option.value = file.id;
-        option.textContent = file.name;
-        fileSelect.appendChild(option);
-      });
-    });
-  }
-
-function draw3D(predictions, imageWidth, imageHeight) {
+  function draw3D(predictions, imageWidth, imageHeight) {
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(75, 1.5, 0.1, 1000);
   camera.position.set(5, 5, 5);
@@ -200,7 +182,7 @@ function draw3D(predictions, imageWidth, imageHeight) {
   container.appendChild(renderer.domElement);
 
   const scale = 0.01;
-  const wallHeight = 1.0; // ← 壁の高さ（1メートル相当）
+  const wallHeight = 0.5; // ← 壁の高さ（1メートル相当）
   const thinHeight = 0.1; // ← 他の要素の高さ
 
   const classColors = {
@@ -255,5 +237,5 @@ function draw3D(predictions, imageWidth, imageHeight) {
   })();
 }
 
-
 });
+
