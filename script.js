@@ -186,7 +186,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  function draw3D(predictions, imageWidth, imageHeight) {
+function draw3D(predictions, imageWidth, imageHeight) {
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(75, 1.5, 0.1, 1000);
   camera.position.set(5, 5, 5);
@@ -197,11 +197,19 @@ document.addEventListener("DOMContentLoaded", () => {
   container.innerHTML = "";
 
   renderer.setSize(container.clientWidth, container.clientHeight || 600);
+  renderer.setClearColor(0x000000); // 背景黒（任意で変更可）
   container.appendChild(renderer.domElement);
 
+  // ✅ OrbitControls を追加
+  const controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true; // 慣性あり操作
+  controls.dampingFactor = 0.05;
+  controls.target.set(0, 0, 0); // 中心を注視
+  controls.update();
+
   const scale = 0.01;
-  const wallHeight = 1.0; // ← 壁の高さ（1メートル相当）
-  const thinHeight = 0.1; // ← 他の要素の高さ
+  const wallHeight = 1.0;
+  const thinHeight = 0.1;
 
   const classColors = {
     wall: 0xaaaaaa,
@@ -210,7 +218,6 @@ document.addEventListener("DOMContentLoaded", () => {
     window: 0x1e90ff,
     closet: 0xffa500,
     fusuma: 0xda70d6
-    // "left side" などは描画しないため省略可
   };
 
   const hiddenClasses = new Set(["left side", "right side", "top side", "under side"]);
@@ -236,22 +243,24 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const mesh = new THREE.Mesh(geometry, material);
     mesh.position.x = (pred.x - imageWidth / 2) * scale;
-    mesh.position.y = boxHeight / 2; // 床から浮かせて設置
+    mesh.position.y = boxHeight / 2;
     mesh.position.z = -(pred.y - imageHeight / 2) * scale;
 
     scene.add(mesh);
   });
 
-  // 環境光と平行光を追加（見た目改善）
+  // 環境光と平行光
   scene.add(new THREE.AmbientLight(0xffffff, 0.5));
   const light = new THREE.DirectionalLight(0xffffff, 0.8);
   light.position.set(5, 10, 7).normalize();
   scene.add(light);
 
-  // アニメーション
+  // アニメーションループ
   (function animate() {
     requestAnimationFrame(animate);
+    controls.update(); // ✅ コントロール更新
     renderer.render(scene, camera);
   })();
 }
+
 });
