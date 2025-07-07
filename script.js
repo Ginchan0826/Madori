@@ -1,13 +1,10 @@
-import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.157.0/build/three.module.js';
-import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.157.0/examples/jsm/controls/OrbitControls.js';
-
 let accessToken = null;
 let latestJson = null;
 
-window.handleCredentialResponse = (response) => {
+function handleCredentialResponse(response) {
   console.log("Googleログイン成功");
   requestAccessToken();
-};
+}
 
 function requestAccessToken() {
   google.accounts.oauth2.initTokenClient({
@@ -16,6 +13,7 @@ function requestAccessToken() {
     callback: (tokenResponse) => {
       accessToken = tokenResponse.access_token;
       console.log("アクセストークン取得済");
+      updateFileSelect();
     }
   }).requestAccessToken();
 }
@@ -30,6 +28,11 @@ document.addEventListener("DOMContentLoaded", () => {
   const resultPre = document.getElementById("result");
   const saveBtn = document.getElementById("saveBtn");
   const loadBtn = document.getElementById("loadBtn");
+
+  const filenameInput = document.getElementById("filenameInput");
+  const fileSelect = document.getElementById("fileSelect");
+
+  analyzeBtn.addEventListener("click", analyzeImage);
 
   function openContainer(container) {
     container.classList.remove("collapsed");
@@ -68,6 +71,8 @@ document.addEventListener("DOMContentLoaded", () => {
     reader.readAsDataURL(selectedFile);
   });
 
+  
+
   const loadingText = document.createElement("div");
   loadingText.style.color = "#008cff";
   loadingText.style.fontWeight = "bold";
@@ -76,7 +81,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   let loadingInterval;
 
-  analyzeBtn.addEventListener("click", async () => {
+  async function analyzeImage() {
     if (!selectedFile) {
       alert("画像を選択してください");
       return;
@@ -96,6 +101,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const formData = new FormData();
     formData.append("file", selectedFile);
+
     const url = `https://detect.roboflow.com/${model}/${version}?api_key=${apiKey}`;
 
     try {
@@ -116,13 +122,16 @@ document.addEventListener("DOMContentLoaded", () => {
     } finally {
       analyzeBtn.disabled = false;
     }
-  });
+  }
 
   saveBtn.addEventListener("click", () => {
     if (!accessToken || !latestJson) return alert("ログインまたは解析が必要です");
 
+    const filename = filenameInput.value.trim();
+    if (!filename) return alert("保存名を入力してください");
+
     const metadata = {
-      name: 'room_analysis.json',
+      name: `${filename}.json`,
       mimeType: 'application/json'
     };
     const file = new Blob([JSON.stringify(latestJson)], { type: 'application/json' });
@@ -134,8 +143,9 @@ document.addEventListener("DOMContentLoaded", () => {
       method: 'POST',
       headers: new Headers({ 'Authorization': 'Bearer ' + accessToken }),
       body: form
-    }).then(() => {
-      alert('Driveに保存完了');
+    }).then(res => res.json()).then(result => {
+      alert('保存完了');
+      updateFileSelect();
     }).catch(err => {
       console.error(err);
       alert('保存失敗');
@@ -143,18 +153,11 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   loadBtn.addEventListener("click", () => {
-    if (!accessToken) return alert("ログインしてください");
+    const fileId = fileSelect.value;
+    if (!accessToken || !fileId) return alert("ログインまたはファイルを選択してください");
 
-    fetch(`https://www.googleapis.com/drive/v3/files?q=name='room_analysis.json' and mimeType='application/json'`, {
+    fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
       headers: new Headers({ 'Authorization': 'Bearer ' + accessToken })
-    }).then(res => res.json()).then(fileList => {
-      if (!fileList.files || fileList.files.length === 0) {
-        return alert('保存されたファイルが見つかりません');
-      }
-      const fileId = fileList.files[0].id;
-      return fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
-        headers: new Headers({ 'Authorization': 'Bearer ' + accessToken })
-      });
     }).then(res => res.json()).then(data => {
       latestJson = data;
       resultPre.textContent = JSON.stringify(data, null, 2);
@@ -167,67 +170,97 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
-  function draw3D(predictions, imageWidth, imageHeight) {
-    const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(75, 1.5, 0.1, 1000);
-    camera.position.set(5, 5, 5);
-    camera.lookAt(0, 0, 0);
+  function updateFileSelect() {
+    if (!accessToken) return;
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
-    const container = document.getElementById("three-container");
-    container.innerHTML = "";
-    renderer.setSize(container.clientWidth, container.clientHeight || 600);
-    renderer.setClearColor(0xeeeeee);
-    container.appendChild(renderer.domElement);
+    fetch(`https://www.googleapis.com/drive/v3/files?q=mimeType='application/json'`, {
+      headers: new Headers({ 'Authorization': 'Bearer ' + accessToken })
+    }).then(res => res.json()).then(fileList => {
+      fileSelect.innerHTML = `<option value="">読み込むファイルを選択</option>`;
+      fileList.files.forEach(file => {
+        const option = document.createElement("option");
+        option.value = file.id;
+        option.textContent = file.name;
+        fileSelect.appendChild(option);
+      });
+    });
+  }
 
-    const controls = new OrbitControls(camera, renderer.domElement);
-    controls.enableDamping = true;
-    controls.dampingFactor = 0.05;
-    controls.target.set(0, 0, 0);
-    controls.update();
+function draw3D(predictions, imageWidth, imageHeight) {
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(75, 1.5, 0.1, 1000);
+  camera.position.set(5, 5, 5);
+  camera.lookAt(0, 0, 0);
 
-    const scale = 0.01;
-    const wallHeight = 1.0;
-    const thinHeight = 0.1;
-    const hiddenClasses = new Set(["left side", "right side", "top side", "under side"]);
-    const classColors = {
-      wall: 0xaaaaaa,
-      door: 0x8b4513,
-      "glass door": 0x87cefa,
-      window: 0x1e90ff,
-      closet: 0xffa500,
-      fusuma: 0xda70d6
-    };
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  const container = document.getElementById("three-container");
+  container.innerHTML = "";
 
-    predictions.forEach((pred) => {
-      if (hiddenClasses.has(pred.class)) return;
+  renderer.setSize(container.clientWidth, container.clientHeight || 600);
+  renderer.setClearColor(0x000000); // 背景黒（任意で変更可）
+  container.appendChild(renderer.domElement);
 
-      const isWall = pred.class === "wall";
-      const boxHeight = isWall ? wallHeight : thinHeight;
-      const geometry = new THREE.BoxGeometry(
-        pred.width * scale,
-        boxHeight,
-        pred.height * scale
-      );
+  // ✅ OrbitControls を追加
+  const controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true; // 慣性あり操作
+  controls.dampingFactor = 0.05;
+  controls.target.set(0, 0, 0); // 中心を注視
+  controls.update();
 
-      const color = classColors[pred.class] || 0xffffff;
-      const material = new THREE.MeshStandardMaterial({ color, transparent: true, opacity: 0.85 });
-      const mesh = new THREE.Mesh(geometry, material);
-      mesh.position.x = (pred.x - imageWidth / 2) * scale;
-      mesh.position.y = boxHeight / 2;
-      mesh.position.z = -(pred.y - imageHeight / 2) * scale;
-      scene.add(mesh);
+  const scale = 0.01;
+  const wallHeight = 0.5;
+  const thinHeight = 0.1;
+
+  const classColors = {
+    wall: 0xaaaaaa,
+    door: 0x8b4513,
+    "glass door": 0x87cefa,
+    window: 0x1e90ff,
+    closet: 0xffa500,
+    fusuma: 0xda70d6
+  };
+
+  const hiddenClasses = new Set(["left side", "right side", "top side", "under side"]);
+
+  predictions.forEach((pred) => {
+    if (hiddenClasses.has(pred.class)) return;
+
+    const isWall = pred.class === "wall";
+    const boxHeight = isWall ? wallHeight : thinHeight;
+
+    const geometry = new THREE.BoxGeometry(
+      pred.width * scale,
+      boxHeight,
+      pred.height * scale
+    );
+
+    const color = classColors[pred.class] || 0xffffff;
+    const material = new THREE.MeshStandardMaterial({
+      color,
+      transparent: true,
+      opacity: 0.85
     });
 
-    scene.add(new THREE.AmbientLight(0xffffff, 0.5));
-    const light = new THREE.DirectionalLight(0xffffff, 0.8);
-    light.position.set(5, 10, 7).normalize();
-    scene.add(light);
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.position.x = (pred.x - imageWidth / 2) * scale;
+    mesh.position.y = boxHeight / 2;
+    mesh.position.z = -(pred.y - imageHeight / 2) * scale;
 
-    (function animate() {
-      requestAnimationFrame(animate);
-      controls.update();
-      renderer.render(scene, camera);
-    })();
-  }
+    scene.add(mesh);
+  });
+
+  // 環境光と平行光
+  scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+  const light = new THREE.DirectionalLight(0xffffff, 0.8);
+  light.position.set(5, 10, 7).normalize();
+  scene.add(light);
+
+  // アニメーションループ
+  (function animate() {
+    requestAnimationFrame(animate);
+    controls.update(); // ✅ コントロール更新
+    renderer.render(scene, camera);
+  })();
+}
+
 });
