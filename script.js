@@ -222,32 +222,33 @@ function draw3D(predictions, imageWidth, imageHeight) {
   const renderer = new THREE.WebGLRenderer({ antialias: true });
   const container = document.getElementById("three-container");
   container.innerHTML = "";
+
   renderer.setSize(container.clientWidth, container.clientHeight || 600);
   container.appendChild(renderer.domElement);
 
+  // OrbitControls の追加
+  const controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true; // スムーズな動きのためにダンピングを有効にする
+  controls.dampingFactor = 0.25; // ダンピングの量
+  controls.screenSpacePanning = false; // パンをスクリーン空間で行うか否か
+  controls.maxPolarAngle = Math.PI / 2; // カメラが真下を向かないように制限（床面より上）
+
   const scale = 0.01;
-  const objectHeight = 0.5; // ← 高さアップ
   const classColors = {
     "left side": 0xffffff, "right side": 0xffffff, "top side": 0xffffff, "under side": 0xffffff,
     wall: 0xaaaaaa, door: 0x8b4513, "glass door": 0x87cefa,
     window: 0x1e90ff, closet: 0xffa500, fusuma: 0xda70d6,
   };
 
-  const hiddenClasses = ["left side", "right side", "top side", "under side"];
-
   predictions.forEach((pred) => {
-    if (hiddenClasses.includes(pred.class)) return; // 非表示対象はスキップ
-
     const geometry = new THREE.BoxGeometry(
-      pred.width * scale,
-      objectHeight, // 高さアップ
-      pred.height * scale
+      pred.width * scale, 0.1, pred.height * scale
     );
     const color = classColors[pred.class] || 0xffffff;
     const material = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.7 });
     const mesh = new THREE.Mesh(geometry, material);
     mesh.position.x = (pred.x - imageWidth / 2) * scale;
-    mesh.position.y = objectHeight / 2; // 底面が地面に接するように
+    mesh.position.y = 0;
     mesh.position.z = -(pred.y - imageHeight / 2) * scale;
     scene.add(mesh);
   });
@@ -258,6 +259,10 @@ function draw3D(predictions, imageWidth, imageHeight) {
 
   (function animate() {
     requestAnimationFrame(animate);
+
+    // OrbitControls の更新
+    controls.update();
+
     renderer.render(scene, camera);
   })();
 }
