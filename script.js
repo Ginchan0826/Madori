@@ -167,6 +167,35 @@ document.addEventListener("DOMContentLoaded", () => {
       alert('読み込みに失敗しました');
     });
   });
+  const deleteBtn = document.getElementById("deleteBtn");
+
+deleteBtn.addEventListener("click", () => {
+  const fileId = fileSelect.value;
+  if (!accessToken || !fileId) return alert("ログインまたはファイルを選択してください");
+
+  const confirmDelete = confirm("本当にこのファイルを削除しますか？");
+  if (!confirmDelete) return;
+
+  fetch(`https://www.googleapis.com/drive/v3/files/${fileId}`, {
+    method: "DELETE",
+    headers: new Headers({
+      Authorization: "Bearer " + accessToken
+    })
+  })
+  .then((res) => {
+    if (res.status === 204) {
+      alert("ファイルを削除しました");
+      updateFileSelect(); // 削除後にリスト更新
+    } else {
+      throw new Error("削除に失敗しました");
+    }
+  })
+  .catch((err) => {
+    console.error(err);
+    alert("削除エラー: " + err.message);
+  });
+});
+
 
   function updateFileSelect() {
     if (!accessToken) return;

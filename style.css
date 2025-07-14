@@ -182,5 +182,11 @@ button:disabled {
 .btn-save:hover {
   background-color: #e0a800;
 }
+.btn-delete {
+  background-color: #e53935;
+}
+.btn-delete:hover {
+  background-color: #c62828;
+}
 
 
