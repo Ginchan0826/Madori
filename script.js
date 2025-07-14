@@ -213,46 +213,53 @@ deleteBtn.addEventListener("click", () => {
     });
   }
 
-  function draw3D(predictions, imageWidth, imageHeight) {
-    const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(75, 1.5, 0.1, 1000);
-    camera.position.set(3.2, 3.2, 3.2);
-    camera.lookAt(0, 0, 0);
+function draw3D(predictions, imageWidth, imageHeight) {
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(75, 1.5, 0.1, 1000);
+  camera.position.set(3.2, 3.2, 3.2);
+  camera.lookAt(0, 0, 0);
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
-    const container = document.getElementById("three-container");
-    container.innerHTML = "";
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  const container = document.getElementById("three-container");
+  container.innerHTML = "";
+  renderer.setSize(container.clientWidth, container.clientHeight || 600);
+  container.appendChild(renderer.domElement);
 
-    renderer.setSize(container.clientWidth, container.clientHeight || 600);
-    container.appendChild(renderer.domElement);
+  const scale = 0.01;
+  const objectHeight = 0.5; // ← 高さアップ
+  const classColors = {
+    "left side": 0xffffff, "right side": 0xffffff, "top side": 0xffffff, "under side": 0xffffff,
+    wall: 0xaaaaaa, door: 0x8b4513, "glass door": 0x87cefa,
+    window: 0x1e90ff, closet: 0xffa500, fusuma: 0xda70d6,
+  };
 
-    const scale = 0.01;
-    const classColors = {
-      "left side": 0xffffff, "right side": 0xffffff, "top side": 0xffffff, "under side": 0xffffff,
-      wall: 0xaaaaaa, door: 0x8b4513, "glass door": 0x87cefa,
-      window: 0x1e90ff, closet: 0xffa500, fusuma: 0xda70d6,
-    };
+  const hiddenClasses = ["left side", "right side", "top side", "under side"];
 
-    predictions.forEach((pred) => {
-      const geometry = new THREE.BoxGeometry(
-        pred.width * scale, 0.1, pred.height * scale
-      );
-      const color = classColors[pred.class] || 0xffffff;
-      const material = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.7 });
-      const mesh = new THREE.Mesh(geometry, material);
-      mesh.position.x = (pred.x - imageWidth / 2) * scale;
-      mesh.position.y = 0;
-      mesh.position.z = -(pred.y - imageHeight / 2) * scale;
-      scene.add(mesh);
-    });
+  predictions.forEach((pred) => {
+    if (hiddenClasses.includes(pred.class)) return; // 非表示対象はスキップ
 
-    const light = new THREE.DirectionalLight(0xffffff, 1);
-    light.position.set(0, 10, 10).normalize();
-    scene.add(light);
+    const geometry = new THREE.BoxGeometry(
+      pred.width * scale,
+      objectHeight, // 高さアップ
+      pred.height * scale
+    );
+    const color = classColors[pred.class] || 0xffffff;
+    const material = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.7 });
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.position.x = (pred.x - imageWidth / 2) * scale;
+    mesh.position.y = objectHeight / 2; // 底面が地面に接するように
+    mesh.position.z = -(pred.y - imageHeight / 2) * scale;
+    scene.add(mesh);
+  });
 
-    (function animate() {
-      requestAnimationFrame(animate);
-      renderer.render(scene, camera);
-    })();
-  }
+  const light = new THREE.DirectionalLight(0xffffff, 1);
+  light.position.set(0, 10, 10).normalize();
+  scene.add(light);
+
+  (function animate() {
+    requestAnimationFrame(animate);
+    renderer.render(scene, camera);
+  })();
+}
+
 });
