@@ -188,33 +188,5 @@ button:disabled {
 .btn-delete:hover {
   background-color: #c62828;
 }
-/* セクションごとにボックス化して区切りを明確にする */
-.section-box {
-  background-color: #f9f9f9;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  padding: 12px;
-  margin-top: 12px;
-  box-shadow: 0 0 4px rgba(0,0,0,0.05);
-}
-
-/* ボタンと入力を横並びにする */
-.button-group {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 10px;
-  align-items: center;
-}
-
-.text-input,
-.select-input {
-  padding: 8px;
-  font-size: 14px;
-  border: 1px solid #ccc;
-  border-radius: 6px;
-  flex: 1;
-  min-width: 120px;
-}
 
 
