@@ -13,6 +13,7 @@ function requestAccessToken() {
     callback: (tokenResponse) => {
       accessToken = tokenResponse.access_token;
       console.log("アクセストークン取得済");
+      updateFileSelect();
     }
   }).requestAccessToken();
 }
@@ -25,9 +26,13 @@ document.addEventListener("DOMContentLoaded", () => {
   const analyzeBtn = document.getElementById("analyzeBtn");
   const previewImg = document.getElementById("preview");
   const resultPre = document.getElementById("result");
-
   const saveBtn = document.getElementById("saveBtn");
   const loadBtn = document.getElementById("loadBtn");
+
+  const filenameInput = document.getElementById("filenameInput");
+  const fileSelect = document.getElementById("fileSelect");
+
+  analyzeBtn.addEventListener("click", analyzeImage);
 
   function openContainer(container) {
     container.classList.remove("collapsed");
@@ -74,7 +79,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   let loadingInterval;
 
-  window.analyzeImage = async () => {
+  async function analyzeImage() {
     if (!selectedFile) {
       alert("画像を選択してください");
       return;
@@ -115,13 +120,16 @@ document.addEventListener("DOMContentLoaded", () => {
     } finally {
       analyzeBtn.disabled = false;
     }
-  };
+  }
 
   saveBtn.addEventListener("click", () => {
     if (!accessToken || !latestJson) return alert("ログインまたは解析が必要です");
 
+    const filename = filenameInput.value.trim();
+    if (!filename) return alert("保存名を入力してください");
+
     const metadata = {
-      name: 'room_analysis.json',
+      name: `${filename}.json`,
       mimeType: 'application/json'
     };
     const file = new Blob([JSON.stringify(latestJson)], { type: 'application/json' });
@@ -134,7 +142,8 @@ document.addEventListener("DOMContentLoaded", () => {
       headers: new Headers({ 'Authorization': 'Bearer ' + accessToken }),
       body: form
     }).then(res => res.json()).then(result => {
-      alert('Driveに保存完了');
+      alert('保存完了');
+      updateFileSelect();
     }).catch(err => {
       console.error(err);
       alert('保存失敗');
@@ -142,18 +151,11 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   loadBtn.addEventListener("click", () => {
-    if (!accessToken) return alert("ログインしてください");
+    const fileId = fileSelect.value;
+    if (!accessToken || !fileId) return alert("ログインまたはファイルを選択してください");
 
-    fetch(`https://www.googleapis.com/drive/v3/files?q=name='room_analysis.json' and mimeType='application/json'`, {
+    fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
       headers: new Headers({ 'Authorization': 'Bearer ' + accessToken })
-    }).then(res => res.json()).then(fileList => {
-      if (!fileList.files || fileList.files.length === 0) {
-        return alert('保存されたファイルが見つかりません');
-      }
-      const fileId = fileList.files[0].id;
-      return fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
-        headers: new Headers({ 'Authorization': 'Bearer ' + accessToken })
-      });
     }).then(res => res.json()).then(data => {
       latestJson = data;
       resultPre.textContent = JSON.stringify(data, null, 2);
@@ -165,6 +167,22 @@ document.addEventListener("DOMContentLoaded", () => {
       alert('読み込みに失敗しました');
     });
   });
+
+  function updateFileSelect() {
+    if (!accessToken) return;
+
+    fetch(`https://www.googleapis.com/drive/v3/files?q=mimeType='application/json'`, {
+      headers: new Headers({ 'Authorization': 'Bearer ' + accessToken })
+    }).then(res => res.json()).then(fileList => {
+      fileSelect.innerHTML = `<option value="">読み込むファイルを選択</option>`;
+      fileList.files.forEach(file => {
+        const option = document.createElement("option");
+        option.value = file.id;
+        option.textContent = file.name;
+        fileSelect.appendChild(option);
+      });
+    });
+  }
 
   function draw3D(predictions, imageWidth, imageHeight) {
     const scene = new THREE.Scene();
