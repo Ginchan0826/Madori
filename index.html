@@ -5,12 +5,6 @@
   <title>間取り分析＆3D表示</title>
   <link rel="stylesheet" href="style.css" />
 
-  <!-- Three.js 本体 -->
-  <script src="https://cdn.jsdelivr.net/npm/three@0.157.0/build/three.min.js"></script>
-
-  <!-- OrbitControls の追加 -->
-  <script src="https://cdn.jsdelivr.net/npm/three@0.157.0/examples/js/controls/OrbitControls.min.js"></script>
-
   <!-- Googleログイン -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
@@ -20,7 +14,7 @@
       <h1>間取り画像を選んで分析</h1>
       <input type="file" id="imageInput" accept="image/*" />
       <input id="filenameInput" type="text" placeholder="保存名を入力" class="text-input" />
-      <button id="analyzeBtn" onclick="analyzeImage()">Roboflowで分析</button>
+      <button id="analyzeBtn">Roboflowで分析</button>
       <button id="saveBtn" class="btn-save">Driveに保存</button>
       <select id="fileSelect" class="select-input">
         <option value="">読み込むファイルを選択</option>
@@ -44,6 +38,20 @@
       <div id="three-container" class="three-canvas"></div>
     </div>
   </div>
+
+  <!-- Google Identity Services -->
+  <div id="g_id_onload"
+       data-client_id="479474446026-kej6f40kvfm6dsuvfeo5d4fm87c6god4.apps.googleusercontent.com"
+       data-callback="handleCredentialResponse"
+       data-scope="https://www.googleapis.com/auth/drive">
+  </div>
+  <div class="g_id_signin" data-type="standard"></div>
+
+  <!-- script.js をモジュールとして読み込む -->
+  <script type="module" src="script.js"></script>
+</body>
+</html>
+
 
   <div id="g_id_onload"
        data-client_id="479474446026-kej6f40kvfm6dsuvfeo5d4fm87c6god4.apps.googleusercontent.com"

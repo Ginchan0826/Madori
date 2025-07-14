@@ -1,7 +1,10 @@
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.157.0/build/three.module.js';
+import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.157.0/examples/jsm/controls/OrbitControls.js';
+
 let accessToken = null;
 let latestJson = null;
 
-function handleCredentialResponse(response) {
+window.handleCredentialResponse = (response) => {
   console.log("Googleログイン成功");
   google.accounts.oauth2.initTokenClient({
     client_id: '479474446026-kej6f40kvfm6dsuvfeo5d4fm87c6god4.apps.googleusercontent.com',
@@ -12,31 +15,17 @@ function handleCredentialResponse(response) {
       updateFileSelect();
     }
   }).requestAccessToken();
-}
+};
 
 document.addEventListener("DOMContentLoaded", () => {
-  const uploadHeader = document.getElementById("upload-header");
-  const uploadContainer = document.getElementById("upload-container");
-  const resultHeader = document.getElementById("result-header");
-  const resultContainer = document.getElementById("result-container");
-  const analyzeBtn = document.getElementById("analyzeBtn");
   const previewImg = document.getElementById("preview");
   const resultPre = document.getElementById("result");
   const saveBtn = document.getElementById("saveBtn");
   const loadBtn = document.getElementById("loadBtn");
   const deleteBtn = document.getElementById("deleteBtn");
-
   const filenameInput = document.getElementById("filenameInput");
   const fileSelect = document.getElementById("fileSelect");
-
-  window.analyzeImage = analyzeImage; // onclick対応
-
-  uploadHeader.addEventListener("click", () => {
-    toggleExclusive(uploadContainer, resultContainer);
-  });
-  resultHeader.addEventListener("click", () => {
-    toggleExclusive(resultContainer, uploadContainer);
-  });
+  const analyzeBtn = document.getElementById("analyzeBtn");
 
   let selectedFile = null;
   document.getElementById("imageInput").addEventListener("change", (e) => {
@@ -51,28 +40,12 @@ document.addEventListener("DOMContentLoaded", () => {
     reader.readAsDataURL(selectedFile);
   });
 
-  const loadingText = document.createElement("div");
-  loadingText.style.color = "#008cff";
-  loadingText.style.fontWeight = "bold";
-  loadingText.style.marginTop = "10px";
-  document.querySelector(".left-pane").appendChild(loadingText);
-
-  let loadingInterval;
+  analyzeBtn.addEventListener("click", analyzeImage);
 
   async function analyzeImage() {
-    if (!selectedFile) {
-      alert("画像を選択してください");
-      return;
-    }
+    if (!selectedFile) return alert("画像を選択してください");
 
     analyzeBtn.disabled = true;
-    loadingText.textContent = "分析中";
-    let dotCount = 0;
-    loadingInterval = setInterval(() => {
-      dotCount = (dotCount + 1) % 4;
-      loadingText.textContent = "分析中" + ".".repeat(dotCount);
-    }, 500);
-
     const model = "floor-plan-japan";
     const version = 7;
     const apiKey = "E0aoexJvBDgvE3nb1jkc";
@@ -85,18 +58,13 @@ document.addEventListener("DOMContentLoaded", () => {
     try {
       const res = await fetch(url, { method: "POST", body: formData });
       const result = await res.json();
-
-      clearInterval(loadingInterval);
-      loadingText.textContent = "";
       latestJson = result;
-
       resultPre.textContent = JSON.stringify(result, null, 2);
       openContainer(resultContainer);
       closeContainer(uploadContainer);
       draw3D(result.predictions, result.image.width, result.image.height);
     } catch (err) {
-      clearInterval(loadingInterval);
-      loadingText.textContent = "エラー: " + err.message;
+      alert("エラー: " + err.message);
     } finally {
       analyzeBtn.disabled = false;
     }
@@ -121,7 +89,7 @@ document.addEventListener("DOMContentLoaded", () => {
       method: 'POST',
       headers: new Headers({ 'Authorization': 'Bearer ' + accessToken }),
       body: form
-    }).then(res => res.json()).then(result => {
+    }).then(() => {
       alert('保存完了');
       updateFileSelect();
     }).catch(err => {
@@ -151,9 +119,7 @@ document.addEventListener("DOMContentLoaded", () => {
   deleteBtn.addEventListener("click", () => {
     const fileId = fileSelect.value;
     if (!accessToken || !fileId) return alert("ログインまたはファイルを選択してください");
-
-    const confirmDelete = confirm("本当にこのファイルを削除しますか？");
-    if (!confirmDelete) return;
+    if (!confirm("本当にこのファイルを削除しますか？")) return;
 
     fetch(`https://www.googleapis.com/drive/v3/files/${fileId}`, {
       method: "DELETE",
@@ -161,23 +127,22 @@ document.addEventListener("DOMContentLoaded", () => {
         Authorization: "Bearer " + accessToken
       })
     })
-    .then((res) => {
-      if (res.status === 204) {
-        alert("ファイルを削除しました");
-        updateFileSelect();
-      } else {
-        throw new Error("削除に失敗しました");
-      }
-    })
-    .catch((err) => {
-      console.error(err);
-      alert("削除エラー: " + err.message);
-    });
+      .then((res) => {
+        if (res.status === 204) {
+          alert("ファイルを削除しました");
+          updateFileSelect();
+        } else {
+          throw new Error("削除に失敗しました");
+        }
+      })
+      .catch((err) => {
+        console.error(err);
+        alert("削除エラー: " + err.message);
+      });
   });
 
   function updateFileSelect() {
     if (!accessToken) return;
-
     fetch(`https://www.googleapis.com/drive/v3/files?q=mimeType='application/json'`, {
       headers: new Headers({ 'Authorization': 'Bearer ' + accessToken })
     }).then(res => res.json()).then(fileList => {
@@ -195,8 +160,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(75, 1.5, 0.1, 1000);
     camera.position.set(3.2, 3.2, 3.2);
-    camera.lookAt(0, 0, 0);
-
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     const container = document.getElementById("three-container");
     container.innerHTML = "";
@@ -211,21 +174,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const scale = 0.01;
     const objectHeight = 0.5;
+    const hiddenClasses = ["left side", "right side", "top side", "under side"];
     const classColors = {
-      "left side": 0xffffff, "right side": 0xffffff, "top side": 0xffffff, "under side": 0xffffff,
       wall: 0xaaaaaa, door: 0x8b4513, "glass door": 0x87cefa,
       window: 0x1e90ff, closet: 0xffa500, fusuma: 0xda70d6,
     };
-    const hiddenClasses = ["left side", "right side", "top side", "under side"];
 
     predictions.forEach((pred) => {
       if (hiddenClasses.includes(pred.class)) return;
-
-      const geometry = new THREE.BoxGeometry(
-        pred.width * scale,
-        objectHeight,
-        pred.height * scale
-      );
+      const geometry = new THREE.BoxGeometry(pred.width * scale, objectHeight, pred.height * scale);
       const color = classColors[pred.class] || 0xffffff;
       const material = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.7 });
       const mesh = new THREE.Mesh(geometry, material);
@@ -246,6 +203,12 @@ document.addEventListener("DOMContentLoaded", () => {
     })();
   }
 
+  // 折りたたみUI
+  const uploadHeader = document.getElementById("upload-header");
+  const uploadContainer = document.getElementById("upload-container");
+  const resultHeader = document.getElementById("result-header");
+  const resultContainer = document.getElementById("result-container");
+
   function openContainer(container) {
     container.classList.remove("collapsed");
     container.classList.add("expanded");
@@ -264,4 +227,11 @@ document.addEventListener("DOMContentLoaded", () => {
       closeContainer(closeElem);
     }
   }
+
+  uploadHeader.addEventListener("click", () => {
+    toggleExclusive(uploadContainer, resultContainer);
+  });
+  resultHeader.addEventListener("click", () => {
+    toggleExclusive(resultContainer, uploadContainer);
+  });
 });
