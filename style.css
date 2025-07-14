@@ -16,16 +16,23 @@ body {
   padding: 20px;
   border-radius: 12px;
   box-shadow: 0 0 12px rgba(0, 0, 0, 0.12);
-  height: 90vh;
+  height: 90vh; /* PC版では高さを固定 */
   gap: 20px;
   box-sizing: border-box;
 }
 
 .left-pane {
-  flex-basis: 30%;
+  flex-basis: 30%; /* PC版の左ペイン幅 */
   display: flex;
   flex-direction: column;
   overflow-y: auto;
+}
+
+.right-pane {
+  flex-basis: 70%; /* PC版の右ペイン幅 */
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1; /* 残りのスペースを埋める */
 }
 
 .left-pane h1,
@@ -78,55 +85,7 @@ button:disabled {
   background-color: #d0d0d0;
 }
 
-/* 折りたたみコンテナ */
-#result-container {
-  overflow-y: auto;
-  max-height: 0;
-  transition: max-height 0.3s ease, padding 0.3s ease;
-  margin-top: 0.5em;
-  border: 1px solid #ccc;
-  border-radius: 6px;
-  background: #fafafa;
-  padding: 0 10px;
-  white-space: pre-wrap;
-  word-break: break-word;
-  font-size: 13px;
-  font-family: Consolas, monospace;
-  color: #222;
-}
-
-#result-container.expanded {
-  max-height: 500px;
-  padding: 10px;
-}
-
-/* 3D表示エリア */
-.right-pane {
-  flex-basis: 70%;
-  display: flex;
-  flex-direction: column;
-}
-
-.three-canvas {
-  flex-grow: 1;
-  background: #ddd;
-  border-radius: 8px;
-  overflow: hidden;
-}
 /* 折りたたみコンテナ共通 */
-.collapsible-header {
-  cursor: pointer;
-  background-color: #e0e0e0;
-  padding: 8px;
-  border-radius: 6px;
-  user-select: none;
-  transition: background 0.2s;
-  margin-top: 1.5em;
-}
-.collapsible-header:hover {
-  background-color: #d0d0d0;
-}
-
 #upload-container,
 #result-container {
   overflow-y: auto;
@@ -159,22 +118,29 @@ button:disabled {
   border-radius: 8px;
   border: none;
 }
+
+/* 3D表示エリア */
+.three-canvas {
+  flex-grow: 1;
+  background: #ddd;
+  border-radius: 8px;
+  overflow: hidden; /* Canvasがはみ出さないように */
+  min-height: 300px; /* スマホで最低限の高さを確保 */
+}
+
+/* ボタン色 */
 .btn-login {
   background-color: #34a853;
 }
 .btn-login:hover {
   background-color: #2c8c45;
 }
-
-/* 分析ボタン */
 .btn-analyze {
   background-color: #4285f4;
 }
 .btn-analyze:hover {
   background-color: #357ae8;
 }
-
-/* 保存ボタン */
 .btn-save {
   background-color: #fbbc04;
   color: #222;
@@ -189,4 +155,35 @@ button:disabled {
   background-color: #c62828;
 }
 
+/* ==================================== */
+/* スマートフォン向けレスポンシブ対応 */
+/* 画面幅が768px以下の時に適用 */
+/* ==================================== */
+@media (max-width: 768px) {
+  body {
+    padding: 10px; /* スマホではパディングを少し減らす */
+  }
 
+  .container {
+    flex-direction: column; /* 左右並びから縦並びに変更 */
+    height: auto; /* 高さを自動調整（スクロール可能にするため） */
+    max-height: unset; /* 必要であれば最大高さを解除 */
+    padding: 15px; /* スマホではパディングを少し減らす */
+  }
+
+  .left-pane,
+  .right-pane {
+    flex-basis: auto; /* flex-basisを自動に設定 */
+    width: 100%; /* 幅を100%にする */
+  }
+
+  .left-pane {
+    margin-bottom: 20px; /* 左ペインの下に余白を追加 */
+  }
+
+  /* 3D表示エリアの高さを確保 */
+  .three-canvas {
+    height: 40vh; /* 画面の高さの40%を3D表示に割り当てる */
+    max-height: 500px; /* 最大高さを設定 */
+  }
+}
