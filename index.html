@@ -8,24 +8,18 @@
   <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
-<div class="button-group">
-  <input type="file" id="imageInput" accept="image/*" />
-  <input id="filenameInput" type="text" placeholder="保存名を入力" class="text-input" />
-  <button id="analyzeBtn">Roboflowで分析</button>
-</div>
-
-<div class="button-group">
-  <button id="saveBtn" class="btn-save">Driveに保存</button>
-  <button id="loadBtn" class="btn-login">Driveから読み込み</button>
-  <button id="deleteBtn" class="btn-delete">選択ファイルを削除</button>
-</div>
-
-<div class="button-group">
-  <select id="fileSelect" class="select-input">
-    <option value="">読み込むファイルを選択</option>
-  </select>
-</div>
-
+  <div class="container">
+    <div class="left-pane">
+      <h1>間取り画像を選んで分析</h1>
+      <input type="file" id="imageInput" accept="image/*" />
+      <input id="filenameInput" type="text" placeholder="保存名を入力" class="text-input" />
+      <button id="analyzeBtn" onclick="analyzeImage()">Roboflowで分析</button>
+      <button id="saveBtn" class="btn-save">Driveに保存</button>
+      <select id="fileSelect" class="select-input">
+        <option value="">読み込むファイルを選択</option>
+      </select>
+      <button id="loadBtn" class="btn-login">Driveから読み込み</button>
+      <button id="deleteBtn" class="btn-delete">選択ファイルを削除</button>
 
 
       <h2 class="collapsible-header" id="upload-header">アップロード画像</h2>
