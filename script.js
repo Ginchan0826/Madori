@@ -3,21 +3,19 @@ let latestJson = null;
 
 function handleCredentialResponse(response) {
   console.log("Googleログイン成功");
-  requestAccessToken();
-}
 
-function requestAccessToken() {
   google.accounts.oauth2.initTokenClient({
     client_id: '479474446026-kej6f40kvfm6dsuvfeo5d4fm87c6god4.apps.googleusercontent.com',
     scope: 'https://www.googleapis.com/auth/drive.file',
     callback: (tokenResponse) => {
       accessToken = tokenResponse.access_token;
       console.log("アクセストークン取得済");
-      updateFileSelect();
+
+      // ⭐ 保存してなくても即座にファイル一覧を表示
+      updateFileSelect(); // ←これが確実に動くようにする
     }
   }).requestAccessToken();
 }
-
 document.addEventListener("DOMContentLoaded", () => {
   const uploadHeader = document.getElementById("upload-header");
   const uploadContainer = document.getElementById("upload-container");
@@ -226,7 +224,4 @@ document.addEventListener("DOMContentLoaded", () => {
       renderer.render(scene, camera);
     })();
   }
-  if (accessToken) {
-  updateFileSelect();  // 既にログイン済みであれば再実行
-}
 });
