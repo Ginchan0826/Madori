@@ -4,14 +4,25 @@
   <meta charset="UTF-8" />
   <title>間取り分析＆3D表示</title>
   <link rel="stylesheet" href="style.css" />
+
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.157.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.157.0/examples/jsm/"
+      }
+    }
+  </script>
+
   <script type="module">
-    import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.157.0/build/three.module.js';
-    import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.157.0/examples/jsm/controls/OrbitControls.js';
+    import * as THREE from 'three'; // インポートマップのおかげで 'three' で読み込める
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js'; // 'three/addons/' のマッピングを使用
 
     // THREE と OrbitControls をグローバルスコープに公開
     window.THREE = THREE;
     window.OrbitControls = OrbitControls;
   </script>
+
   <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
