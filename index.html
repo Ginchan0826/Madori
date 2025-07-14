@@ -2,36 +2,20 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <title>間取り分析＆3D表示 + Drive保存</title>
+  <title>間取り分析＆3D表示</title>
   <link rel="stylesheet" href="style.css" />
   <script src="https://cdn.jsdelivr.net/npm/three@0.157.0/build/three.min.js"></script>
-  <script src="https://apis.google.com/js/api.js"></script>
   <script src="https://accounts.google.com/gsi/client" async defer></script>
-
-<div id="g_id_onload"
-     data-client_id="479474446026-kej6f40kvfm6dsuvfeo5d4fm87c6god4.apps.googleusercontent.com"
-     data-callback="handleCredentialResponse">
-</div>
-
-<div class="g_id_signin" data-type="standard"></div>
-
-<script>
-function handleCredentialResponse(response) {
-    console.log("Encoded JWT ID token: " + response.credential);
-    // JWTトークンを解析・サーバー送信などログイン処理を行う
-}
-</script>
 </head>
 <body>
   <div class="container">
-    <!-- 左:幅30% -->
+    <!-- 左: 幅30% -->
     <div class="left-pane">
       <h1>間取り画像を選んで分析</h1>
-      <button class="btn-login" onclick="initGoogleAPI()">Googleにログイン</button>
       <input type="file" id="imageInput" accept="image/*" />
-      <button id="analyzeBtn" class="btn-analyze" onclick="analyzeImage()">Roboflowで分析</button>
-      <button class="btn-save" onclick="uploadToDrive()">Google Driveに保存</button>
-      <p id="status"></p>
+      <button id="analyzeBtn" class="btn-analyze">Roboflowで分析</button>
+      <button id="saveBtn" class="btn-save">Driveに保存</button>
+      <button id="loadBtn" class="btn-login">Driveから読み込み</button>
 
       <h2 class="collapsible-header" id="upload-header">アップロード画像</h2>
       <div id="upload-container" class="collapsed">
@@ -44,12 +28,20 @@ function handleCredentialResponse(response) {
       </div>
     </div>
 
-    <!-- 右:幅70% -->
+    <!-- 右: 幅70% -->
     <div class="right-pane">
       <h2>3D表示</h2>
       <div id="three-container" class="three-canvas"></div>
     </div>
   </div>
+
+  <!-- Google Login -->
+  <div id="g_id_onload"
+       data-client_id="479474446026-kej6f40kvfm6dsuvfeo5d4fm87c6god4.apps.googleusercontent.com"
+       data-callback="handleCredentialResponse"
+       data-scope="https://www.googleapis.com/auth/drive.file">
+  </div>
+  <div class="g_id_signin" data-type="standard"></div>
 
   <script src="script.js"></script>
 </body>
