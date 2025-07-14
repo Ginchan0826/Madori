@@ -5,7 +5,10 @@
   <title>間取り分析＆3D表示</title>
   <link rel="stylesheet" href="style.css" />
   <script src="https://cdn.jsdelivr.net/npm/three@0.157.0/build/three.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.157.0/examples/js/controls/OrbitControls.js"></script>
+  <script type="module">
+    import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.157.0/examples/jsm/controls/OrbitControls.js';
+    window.OrbitControls = OrbitControls; // グローバルスコープに公開
+  </script>
   <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>

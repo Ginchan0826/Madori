@@ -227,7 +227,8 @@ function draw3D(predictions, imageWidth, imageHeight) {
   container.appendChild(renderer.domElement);
 
   // OrbitControls の追加
-  const controls = new THREE.OrbitControls(camera, renderer.domElement);
+  // THREE.OrbitControls の代わりに、グローバルに公開した OrbitControls を使用
+  const controls = new window.OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true; // スムーズな動きのためにダンピングを有効にする
   controls.dampingFactor = 0.25; // ダンピングの量
   controls.screenSpacePanning = false; // パンをスクリーン空間で行うか否か
