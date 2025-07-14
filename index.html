@@ -9,29 +9,35 @@
 </head>
 <body>
   <div class="container">
-    <div class="left-pane">
-      <h1>間取り画像を選んで分析</h1>
-      <input type="file" id="imageInput" accept="image/*" />
-      <input id="filenameInput" type="text" placeholder="保存名を入力" class="text-input" />
-      <button id="analyzeBtn" onclick="analyzeImage()">Roboflowで分析</button>
-      <button id="saveBtn" class="btn-save">Driveに保存</button>
-      <select id="fileSelect" class="select-input">
-        <option value="">読み込むファイルを選択</option>
-      </select>
-      <button id="loadBtn" class="btn-login">Driveから読み込み</button>
-      <button id="deleteBtn" class="btn-delete">選択ファイルを削除</button>
+<!-- 画像アップロードと分析 -->
+<div class="section-box">
+  <h2>画像アップロード</h2>
+  <input type="file" id="imageInput" accept="image/*" />
+  <div class="button-group">
+    <input id="filenameInput" type="text" placeholder="保存名を入力" class="text-input" />
+    <button id="analyzeBtn">Roboflowで分析</button>
+  </div>
+</div>
 
-
-      <h2 class="collapsible-header" id="upload-header">アップロード画像</h2>
-      <div id="upload-container" class="collapsed">
-        <img id="preview" alt="アップロード画像" />
-      </div>
-
+<!-- Drive関連の保存・読み込み・削除 -->
+<div class="section-box">
+  <h2>Drive操作</h2>
+  <div class="button-group">
+    <button id="saveBtn" class="btn-save">Driveに保存</button>
+    <button id="loadBtn" class="btn-login">Driveから読み込み</button>
+    <button id="deleteBtn" class="btn-delete">選択ファイルを削除</button>
+  </div>
+  <select id="fileSelect" class="select-input">
+    <option value="">読み込むファイルを選択</option>
+  </select>
+</div>
+      <!--
       <h2 class="collapsible-header" id="result-header">分析結果（JSON）</h2>
       <div id="result-container" class="collapsed">
         <pre id="result">まだ分析されていません</pre>
       </div>
     </div>
+  -->
 
     <div class="right-pane">
       <h2>3D表示</h2>
