@@ -14,8 +14,7 @@
       <h1>間取り画像を選んで分析</h1>
       <input type="file" id="imageInput" accept="image/*" />
       <input id="filenameInput" type="text" placeholder="保存名を入力" class="text-input" />
-      <button id="analyzeBtn" onclick="analyzeImage()">Roboflowで分析</button>
-      <button id="saveBtn" class="btn-save">Driveに保存</button>
+      <button id="analyzeBtn">Roboflowで分析</button> <button id="saveBtn" class="btn-save">Driveに保存</button>
       <select id="fileSelect" class="select-input">
         <option value="">読み込むファイルを選択</option>
       </select>
@@ -28,13 +27,11 @@
         <img id="preview" alt="アップロード画像" />
       </div>
 
-      
       <h2 class="collapsible-header" id="result-header">分析結果（JSON）</h2>
       <div id="result-container" class="collapsed">
         <pre id="result">まだ分析されていません</pre>
       </div>
     </div>
-  
 
     <div class="right-pane">
       <h2>3D表示</h2>
