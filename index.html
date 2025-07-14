@@ -4,7 +4,14 @@
   <meta charset="UTF-8" />
   <title>間取り分析＆3D表示</title>
   <link rel="stylesheet" href="style.css" />
+
+  <!-- Three.js 本体 -->
   <script src="https://cdn.jsdelivr.net/npm/three@0.157.0/build/three.min.js"></script>
+
+  <!-- OrbitControls の追加 -->
+  <script src="https://cdn.jsdelivr.net/npm/three@0.157.0/examples/js/controls/OrbitControls.min.js"></script>
+
+  <!-- Googleログイン -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
@@ -21,19 +28,16 @@
       <button id="loadBtn" class="btn-login">Driveから読み込み</button>
       <button id="deleteBtn" class="btn-delete">選択ファイルを削除</button>
 
-
       <h2 class="collapsible-header" id="upload-header">アップロード画像</h2>
       <div id="upload-container" class="collapsed">
         <img id="preview" alt="アップロード画像" />
       </div>
 
-      
       <h2 class="collapsible-header" id="result-header">分析結果（JSON）</h2>
       <div id="result-container" class="collapsed">
         <pre id="result">まだ分析されていません</pre>
       </div>
     </div>
-  
 
     <div class="right-pane">
       <h2>3D表示</h2>
@@ -44,7 +48,7 @@
   <div id="g_id_onload"
        data-client_id="479474446026-kej6f40kvfm6dsuvfeo5d4fm87c6god4.apps.googleusercontent.com"
        data-callback="handleCredentialResponse"
-       data-scope="https://www.googleapis.com/auth/drive.file">
+       data-scope="https://www.googleapis.com/auth/drive">
   </div>
   <div class="g_id_signin" data-type="standard"></div>
 

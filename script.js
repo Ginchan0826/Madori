@@ -3,13 +3,9 @@ let latestJson = null;
 
 function handleCredentialResponse(response) {
   console.log("Googleログイン成功");
-  requestAccessToken();
-}
-
-function requestAccessToken() {
   google.accounts.oauth2.initTokenClient({
     client_id: '479474446026-kej6f40kvfm6dsuvfeo5d4fm87c6god4.apps.googleusercontent.com',
-    scope: 'https://www.googleapis.com/auth/drive.file',
+    scope: 'https://www.googleapis.com/auth/drive',
     callback: (tokenResponse) => {
       accessToken = tokenResponse.access_token;
       console.log("アクセストークン取得済");
@@ -28,28 +24,12 @@ document.addEventListener("DOMContentLoaded", () => {
   const resultPre = document.getElementById("result");
   const saveBtn = document.getElementById("saveBtn");
   const loadBtn = document.getElementById("loadBtn");
+  const deleteBtn = document.getElementById("deleteBtn");
 
   const filenameInput = document.getElementById("filenameInput");
   const fileSelect = document.getElementById("fileSelect");
 
-  analyzeBtn.addEventListener("click", analyzeImage);
-
-  function openContainer(container) {
-    container.classList.remove("collapsed");
-    container.classList.add("expanded");
-  }
-  function closeContainer(container) {
-    container.classList.remove("expanded");
-    container.classList.add("collapsed");
-  }
-  function toggleExclusive(openElem, closeElem) {
-    if (openElem.classList.contains("expanded")) {
-      closeContainer(openElem);
-    } else {
-      openContainer(openElem);
-      closeContainer(closeElem);
-    }
-  }
+  window.analyzeImage = analyzeImage; // onclick対応
 
   uploadHeader.addEventListener("click", () => {
     toggleExclusive(uploadContainer, resultContainer);
@@ -167,35 +147,33 @@ document.addEventListener("DOMContentLoaded", () => {
       alert('読み込みに失敗しました');
     });
   });
-  const deleteBtn = document.getElementById("deleteBtn");
 
-deleteBtn.addEventListener("click", () => {
-  const fileId = fileSelect.value;
-  if (!accessToken || !fileId) return alert("ログインまたはファイルを選択してください");
+  deleteBtn.addEventListener("click", () => {
+    const fileId = fileSelect.value;
+    if (!accessToken || !fileId) return alert("ログインまたはファイルを選択してください");
 
-  const confirmDelete = confirm("本当にこのファイルを削除しますか？");
-  if (!confirmDelete) return;
+    const confirmDelete = confirm("本当にこのファイルを削除しますか？");
+    if (!confirmDelete) return;
 
-  fetch(`https://www.googleapis.com/drive/v3/files/${fileId}`, {
-    method: "DELETE",
-    headers: new Headers({
-      Authorization: "Bearer " + accessToken
+    fetch(`https://www.googleapis.com/drive/v3/files/${fileId}`, {
+      method: "DELETE",
+      headers: new Headers({
+        Authorization: "Bearer " + accessToken
+      })
     })
-  })
-  .then((res) => {
-    if (res.status === 204) {
-      alert("ファイルを削除しました");
-      updateFileSelect(); // 削除後にリスト更新
-    } else {
-      throw new Error("削除に失敗しました");
-    }
-  })
-  .catch((err) => {
-    console.error(err);
-    alert("削除エラー: " + err.message);
+    .then((res) => {
+      if (res.status === 204) {
+        alert("ファイルを削除しました");
+        updateFileSelect();
+      } else {
+        throw new Error("削除に失敗しました");
+      }
+    })
+    .catch((err) => {
+      console.error(err);
+      alert("削除エラー: " + err.message);
+    });
   });
-});
-
 
   function updateFileSelect() {
     if (!accessToken) return;
@@ -213,53 +191,77 @@ deleteBtn.addEventListener("click", () => {
     });
   }
 
-function draw3D(predictions, imageWidth, imageHeight) {
-  const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(75, 1.5, 0.1, 1000);
-  camera.position.set(3.2, 3.2, 3.2);
-  camera.lookAt(0, 0, 0);
+  function draw3D(predictions, imageWidth, imageHeight) {
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, 1.5, 0.1, 1000);
+    camera.position.set(3.2, 3.2, 3.2);
+    camera.lookAt(0, 0, 0);
 
-  const renderer = new THREE.WebGLRenderer({ antialias: true });
-  const container = document.getElementById("three-container");
-  container.innerHTML = "";
-  renderer.setSize(container.clientWidth, container.clientHeight || 600);
-  container.appendChild(renderer.domElement);
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    const container = document.getElementById("three-container");
+    container.innerHTML = "";
+    renderer.setSize(container.clientWidth, container.clientHeight || 600);
+    container.appendChild(renderer.domElement);
 
-  const scale = 0.01;
-  const objectHeight = 0.5; // ← 高さアップ
-  const classColors = {
-    "left side": 0xffffff, "right side": 0xffffff, "top side": 0xffffff, "under side": 0xffffff,
-    wall: 0xaaaaaa, door: 0x8b4513, "glass door": 0x87cefa,
-    window: 0x1e90ff, closet: 0xffa500, fusuma: 0xda70d6,
-  };
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.target.set(0, 0, 0);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    controls.update();
 
-  const hiddenClasses = ["left side", "right side", "top side", "under side"];
+    const scale = 0.01;
+    const objectHeight = 0.5;
+    const classColors = {
+      "left side": 0xffffff, "right side": 0xffffff, "top side": 0xffffff, "under side": 0xffffff,
+      wall: 0xaaaaaa, door: 0x8b4513, "glass door": 0x87cefa,
+      window: 0x1e90ff, closet: 0xffa500, fusuma: 0xda70d6,
+    };
+    const hiddenClasses = ["left side", "right side", "top side", "under side"];
 
-  predictions.forEach((pred) => {
-    if (hiddenClasses.includes(pred.class)) return; // 非表示対象はスキップ
+    predictions.forEach((pred) => {
+      if (hiddenClasses.includes(pred.class)) return;
 
-    const geometry = new THREE.BoxGeometry(
-      pred.width * scale,
-      objectHeight, // 高さアップ
-      pred.height * scale
-    );
-    const color = classColors[pred.class] || 0xffffff;
-    const material = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.7 });
-    const mesh = new THREE.Mesh(geometry, material);
-    mesh.position.x = (pred.x - imageWidth / 2) * scale;
-    mesh.position.y = objectHeight / 2; // 底面が地面に接するように
-    mesh.position.z = -(pred.y - imageHeight / 2) * scale;
-    scene.add(mesh);
-  });
+      const geometry = new THREE.BoxGeometry(
+        pred.width * scale,
+        objectHeight,
+        pred.height * scale
+      );
+      const color = classColors[pred.class] || 0xffffff;
+      const material = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.7 });
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.position.x = (pred.x - imageWidth / 2) * scale;
+      mesh.position.y = objectHeight / 2;
+      mesh.position.z = -(pred.y - imageHeight / 2) * scale;
+      scene.add(mesh);
+    });
 
-  const light = new THREE.DirectionalLight(0xffffff, 1);
-  light.position.set(0, 10, 10).normalize();
-  scene.add(light);
+    const light = new THREE.DirectionalLight(0xffffff, 1);
+    light.position.set(0, 10, 10).normalize();
+    scene.add(light);
 
-  (function animate() {
-    requestAnimationFrame(animate);
-    renderer.render(scene, camera);
-  })();
-}
+    (function animate() {
+      requestAnimationFrame(animate);
+      controls.update();
+      renderer.render(scene, camera);
+    })();
+  }
 
+  function openContainer(container) {
+    container.classList.remove("collapsed");
+    container.classList.add("expanded");
+  }
+
+  function closeContainer(container) {
+    container.classList.remove("expanded");
+    container.classList.add("collapsed");
+  }
+
+  function toggleExclusive(openElem, closeElem) {
+    if (openElem.classList.contains("expanded")) {
+      closeContainer(openElem);
+    } else {
+      openContainer(openElem);
+      closeContainer(closeElem);
+    }
+  }
 });
