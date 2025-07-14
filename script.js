@@ -9,7 +9,7 @@ function handleCredentialResponse(response) {
 function requestAccessToken() {
   google.accounts.oauth2.initTokenClient({
     client_id: '479474446026-kej6f40kvfm6dsuvfeo5d4fm87c6god4.apps.googleusercontent.com',
-    scope: 'https://www.googleapis.com/auth/drive.file',
+   scope: 'https://www.googleapis.com/auth/drive',
     callback: (tokenResponse) => {
       accessToken = tokenResponse.access_token;
       console.log("アクセストークン取得済");
