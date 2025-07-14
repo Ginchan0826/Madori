@@ -4,7 +4,6 @@
   <meta charset="UTF-8" />
   <title>間取り分析＆3D表示</title>
   <link rel="stylesheet" href="style.css" />
-
   <!-- Googleログイン -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
@@ -13,14 +12,14 @@
     <div class="left-pane">
       <h1>間取り画像を選んで分析</h1>
       <input type="file" id="imageInput" accept="image/*" />
-      <input id="filenameInput" type="text" placeholder="保存名を入力" class="text-input" />
+      <input id="filenameInput" type="text" placeholder="保存名を入力" />
       <button id="analyzeBtn">Roboflowで分析</button>
-      <button id="saveBtn" class="btn-save">Driveに保存</button>
-      <select id="fileSelect" class="select-input">
+      <button id="saveBtn">Driveに保存</button>
+      <select id="fileSelect">
         <option value="">読み込むファイルを選択</option>
       </select>
-      <button id="loadBtn" class="btn-login">Driveから読み込み</button>
-      <button id="deleteBtn" class="btn-delete">選択ファイルを削除</button>
+      <button id="loadBtn">Driveから読み込み</button>
+      <button id="deleteBtn">選択ファイルを削除</button>
 
       <h2 class="collapsible-header" id="upload-header">アップロード画像</h2>
       <div id="upload-container" class="collapsed">
@@ -39,7 +38,7 @@
     </div>
   </div>
 
-  <!-- Google Identity Services -->
+  <!-- Google Identity 初期化 -->
   <div id="g_id_onload"
        data-client_id="479474446026-kej6f40kvfm6dsuvfeo5d4fm87c6god4.apps.googleusercontent.com"
        data-callback="handleCredentialResponse"
@@ -47,19 +46,7 @@
   </div>
   <div class="g_id_signin" data-type="standard"></div>
 
-  <!-- script.js をモジュールとして読み込む -->
+  <!-- モジュール形式で読み込む -->
   <script type="module" src="script.js"></script>
-</body>
-</html>
-
-
-  <div id="g_id_onload"
-       data-client_id="479474446026-kej6f40kvfm6dsuvfeo5d4fm87c6god4.apps.googleusercontent.com"
-       data-callback="handleCredentialResponse"
-       data-scope="https://www.googleapis.com/auth/drive">
-  </div>
-  <div class="g_id_signin" data-type="standard"></div>
-
-  <script src="script.js"></script>
 </body>
 </html>
