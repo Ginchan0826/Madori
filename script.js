@@ -226,4 +226,7 @@ document.addEventListener("DOMContentLoaded", () => {
       renderer.render(scene, camera);
     })();
   }
+  if (accessToken) {
+  updateFileSelect();  // 既にログイン済みであれば再実行
+}
 });
