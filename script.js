@@ -255,7 +255,7 @@ function draw3D(predictions, imageWidth, imageHeight) {
 
     const geometry = new THREE.BoxGeometry(
       pred.width * scale,
-      1.5, // ← 壁の高さを上げる
+      1, // ← 壁の高さを上げる
       pred.height * scale
     );
 
