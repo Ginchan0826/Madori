@@ -214,71 +214,59 @@ deleteBtn.addEventListener("click", () => {
   }
 
 function draw3D(predictions, imageWidth, imageHeight) {
-  // ======== 補完ステップ ========
-  // 壁同士の角度・距離を見て補完を制限
-  function mergeCloseWalls(predictions, threshold = 25) {
-    const walls = predictions.filter(p => p.class === "wall");
-    const merged = [...predictions];
+  // ======== 外周輪郭抽出アルゴリズム ========
 
-    for (let i = 0; i < walls.length; i++) {
-      for (let j = i + 1; j < walls.length; j++) {
-        const a = walls[i], b = walls[j];
-        const dx = a.x - b.x;
-        const dy = a.y - b.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
+  // 「left/right/top/under side」を除外
+  const validPreds = predictions.filter(
+    (p) =>
+      !["left side", "right side", "top side", "under side"].includes(p.class)
+  );
 
-        // 条件: 近距離 & 向きがほぼ同じ（水平 or 垂直方向）
-        const similarHorizontal = Math.abs(a.y - b.y) < 15 && Math.abs(a.x - b.x) < a.width * 1.5;
-        const similarVertical = Math.abs(a.x - b.x) < 15 && Math.abs(a.y - b.y) < a.height * 1.5;
+  // 壁のみ抽出
+  const walls = validPreds.filter((p) => p.class === "wall");
 
-        if (dist < threshold && (similarHorizontal || similarVertical)) {
-          const newWall = {
-            class: "wall",
-            x: (a.x + b.x) / 2,
-            y: (a.y + b.y) / 2,
-            width: Math.max(a.width, b.width),
-            height: Math.max(a.height, b.height)
-          };
-          merged.push(newWall);
-        }
-      }
-    }
-    return merged;
+  // 壁の外接矩形群から全体の輪郭を推定
+  const points = [];
+  walls.forEach((w) => {
+    const x1 = w.x - w.width / 2;
+    const y1 = w.y - w.height / 2;
+    const x2 = w.x + w.width / 2;
+    const y2 = w.y + w.height / 2;
+    points.push([x1, y1], [x2, y1], [x2, y2], [x1, y2]);
+  });
+
+  // 輪郭点が存在しない場合は終了
+  if (points.length < 3) {
+    alert("壁が検出されませんでした。");
+    return;
   }
 
-  // 線形補完も緩やかに：小さなギャップだけ埋める
-  function fillMissingWalls(predictions, step = 50) {
-    const walls = predictions.filter(p => p.class === "wall");
-    const added = [];
-
-    for (let i = 0; i < walls.length; i++) {
-      for (let j = i + 1; j < walls.length; j++) {
-        const a = walls[i], b = walls[j];
-        const sameRow = Math.abs(a.y - b.y) < 10;
-        const sameCol = Math.abs(a.x - b.x) < 10;
-
-        // 横方向の短い隙間のみ埋める
-        if (sameRow && Math.abs(a.x - b.x) < 150 && Math.abs(a.x - b.x) > a.width) {
-          for (let x = Math.min(a.x, b.x) + step; x < Math.max(a.x, b.x); x += step) {
-            added.push({ class: "wall", x, y: a.y, width: step * 0.8, height: a.height });
-          }
-        }
-        // 縦方向の短い隙間のみ埋める
-        if (sameCol && Math.abs(a.y - b.y) < 150 && Math.abs(a.y - b.y) > a.height) {
-          for (let y = Math.min(a.y, b.y) + step; y < Math.max(a.y, b.y); y += step) {
-            added.push({ class: "wall", x: a.x, y, width: a.width, height: step * 0.8 });
-          }
-        }
-      }
+  // 凸包アルゴリズム（Graham Scan）で外周の輪郭を抽出
+  function convexHull(points) {
+    points.sort((a, b) => (a[0] === b[0] ? a[1] - b[1] : a[0] - b[0]));
+    const cross = (o, a, b) =>
+      (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+    const lower = [];
+    for (let p of points) {
+      while (lower.length >= 2 && cross(lower[lower.length - 2], lower[lower.length - 1], p) <= 0)
+        lower.pop();
+      lower.push(p);
     }
-    return [...predictions, ...added];
+    const upper = [];
+    for (let i = points.length - 1; i >= 0; i--) {
+      const p = points[i];
+      while (upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], p) <= 0)
+        upper.pop();
+      upper.push(p);
+    }
+    upper.pop();
+    lower.pop();
+    return lower.concat(upper);
   }
 
-  // 補完を適用（段階的に）
-  predictions = mergeCloseWalls(predictions);
-  predictions = fillMissingWalls(predictions);
+  const hull = convexHull(points);
 
-  // ======== 3D描画処理 ========
+  // ======== Three.js 初期化 ========
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(75, 1.5, 0.1, 1000);
   camera.position.set(5, 5, 5);
@@ -296,40 +284,41 @@ function draw3D(predictions, imageWidth, imageHeight) {
   controls.maxPolarAngle = Math.PI / 2;
 
   const scale = 0.01;
-  const classColors = {
-    wall: 0x999999,
-    door: 0x8b4513,
-    "glass door": 0x87cefa,
-    window: 0x1e90ff,
-    closet: 0xffa500,
-    fusuma: 0xda70d6,
-  };
 
-  // ✅ 床を追加
+  // ======== 床生成 ========
   const floorGeometry = new THREE.PlaneGeometry(imageWidth * scale, imageHeight * scale);
   const floorMaterial = new THREE.MeshLambertMaterial({ color: 0xf0f0f0 });
   const floor = new THREE.Mesh(floorGeometry, floorMaterial);
   floor.rotation.x = -Math.PI / 2;
   scene.add(floor);
 
-  const ignoreList = ["left side", "right side", "under side", "top side"];
+  // ======== 外周壁のみ描画 ========
+  const wallColor = 0x999999;
+  const wallHeight = 1.5;
+  const material = new THREE.MeshLambertMaterial({ color: wallColor });
 
-  predictions.forEach((pred) => {
-    if (ignoreList.includes(pred.class)) return;
+  // 凸包（輪郭）上に壁を並べる
+  for (let i = 0; i < hull.length; i++) {
+    const a = hull[i];
+    const b = hull[(i + 1) % hull.length];
 
-    const geometry = new THREE.BoxGeometry(pred.width * scale, 1.5, pred.height * scale);
-    const color = classColors[pred.class] || 0xffffff;
-    const material = new THREE.MeshLambertMaterial({ color });
+    const dx = b[0] - a[0];
+    const dy = b[1] - a[1];
+    const length = Math.sqrt(dx * dx + dy * dy);
+
+    const geometry = new THREE.BoxGeometry(length * scale, wallHeight, 0.1);
     const mesh = new THREE.Mesh(geometry, material);
 
-    mesh.position.x = (pred.x - imageWidth / 2) * scale;
-    mesh.position.y = 0.75;
-    mesh.position.z = -(pred.y - imageHeight / 2) * scale;
+    const angle = Math.atan2(dy, dx);
+    mesh.rotation.y = -angle;
+    mesh.position.x = ((a[0] + b[0]) / 2 - imageWidth / 2) * scale;
+    mesh.position.y = wallHeight / 2;
+    mesh.position.z = -((a[1] + b[1]) / 2 - imageHeight / 2) * scale;
 
     scene.add(mesh);
-  });
+  }
 
-  // ライト
+  // ======== ライト ========
   const light = new THREE.DirectionalLight(0xffffff, 1);
   light.position.set(5, 10, 7);
   scene.add(light);
@@ -341,6 +330,7 @@ function draw3D(predictions, imageWidth, imageHeight) {
     renderer.render(scene, camera);
   })();
 }
+
 
 
 });
