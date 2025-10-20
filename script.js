@@ -213,61 +213,75 @@ deleteBtn.addEventListener("click", () => {
     });
   }
 
-  function draw3D(predictions, imageWidth, imageHeight) {
-  // シーン、カメラ、レンダラーの初期化
-   const scene = new THREE.Scene();
-   const camera = new THREE.PerspectiveCamera(75, 1.5, 0.1, 1000);
-    camera.position.set(3.2, 3.2, 3.2);
-    camera.lookAt(0, 0, 0);
+function draw3D(predictions, imageWidth, imageHeight) {
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(75, 1.5, 0.1, 1000);
+  camera.position.set(5, 5, 5);
+  camera.lookAt(0, 0, 0);
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
-    const container = document.getElementById("three-container");
-    container.innerHTML = "";
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  const container = document.getElementById("three-container");
+  container.innerHTML = "";
+  renderer.setSize(container.clientWidth, container.clientHeight || 600);
+  container.appendChild(renderer.domElement);
 
-    renderer.setSize(container.clientWidth, container.clientHeight || 600);
-    container.appendChild(renderer.domElement);
+  const controls = new window.OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.25;
+  controls.maxPolarAngle = Math.PI / 2;
 
-    // OrbitControls: 3Dビューをマウスで操作するためのコントロール
-    const controls = new window.OrbitControls(camera, renderer.domElement);
-    controls.enableDamping = true; 
-    controls.dampingFactor = 0.25; 
-    controls.screenSpacePanning = false; 
-    controls.maxPolarAngle = Math.PI / 2; 
+  const scale = 0.01;
+  const classColors = {
+    wall: 0x999999,
+    door: 0x8b4513,
+    "glass door": 0x87cefa,
+    window: 0x1e90ff,
+    closet: 0xffa500,
+    fusuma: 0xda70d6,
+  };
 
-   const scale = 0.01;
-    const classColors = {
-      "left side": 0xffffff, "right side": 0xffffff, "top side": 0xffffff, "under side": 0xffffff,
-     wall: 0xaaaaaa, door: 0x8b4513, "glass door": 0x87cefa,
-     window: 0x1e90ff, closet: 0xffa500, fusuma: 0xda70d6,
-   };
+  // ✅ 床を追加
+  const floorGeometry = new THREE.PlaneGeometry(imageWidth * scale, imageHeight * scale);
+  const floorMaterial = new THREE.MeshLambertMaterial({ color: 0xf0f0f0 });
+  const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+  floor.rotation.x = -Math.PI / 2;
+  scene.add(floor);
 
-    predictions.forEach((pred) => {
-     const geometry = new THREE.BoxGeometry(
-       pred.width * scale, 0.1, pred.height * scale
-     );
-     const color = classColors[pred.class] || 0xffffff;
-     const material = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.7 });
-     const mesh = new THREE.Mesh(geometry, material);
-     mesh.position.x = (pred.x - imageWidth / 2) * scale;
-     mesh.position.y = 0;
-     mesh.position.z = -(pred.y - imageHeight / 2) * scale;
-     scene.add(mesh);
-    });
+  // ✅ 不要なクラスをスキップ
+  const ignoreList = ["left side", "right side", "under side", "top side"];
 
-    const light = new THREE.DirectionalLight(0xffffff, 1);
-    light.position.set(0, 10, 10).normalize();
-    scene.add(light);
+  predictions.forEach((pred) => {
+    if (ignoreList.includes(pred.class)) return;
 
+    const geometry = new THREE.BoxGeometry(
+      pred.width * scale,
+      0.5, // ← 壁の高さを上げる
+      pred.height * scale
+    );
+
+    const color = classColors[pred.class] || 0xffffff;
+    const material = new THREE.MeshLambertMaterial({ color });
+    const mesh = new THREE.Mesh(geometry, material);
+
+    mesh.position.x = (pred.x - imageWidth / 2) * scale;
+    mesh.position.y = 0.75; // 壁の中央を床の上に
+    mesh.position.z = -(pred.y - imageHeight / 2) * scale;
+
+    scene.add(mesh);
+  });
+
+  // ライトを追加
+  const light = new THREE.DirectionalLight(0xffffff, 1);
+  light.position.set(5, 10, 7);
+  scene.add(light);
+  scene.add(new THREE.AmbientLight(0x404040)); // 環境光
+
+  // 描画ループ
   (function animate() {
     requestAnimationFrame(animate);
-
-    // OrbitControls の更新
     controls.update();
-
     renderer.render(scene, camera);
   })();
 }
-
-
 
 });
