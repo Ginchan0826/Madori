@@ -214,6 +214,67 @@ deleteBtn.addEventListener("click", () => {
   }
 
 function draw3D(predictions, imageWidth, imageHeight) {
+  // ======== 補完ステップ ========
+  // 1️⃣ 壁の隙間を近接距離で補完
+  function mergeCloseWalls(predictions, threshold = 30) {
+    const walls = predictions.filter(p => p.class === "wall");
+    const merged = [...predictions];
+  
+    for (let i = 0; i < walls.length; i++) {
+      for (let j = i + 1; j < walls.length; j++) {
+        const a = walls[i], b = walls[j];
+        const dx = a.x - b.x;
+        const dy = a.y - b.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+  
+        // 壁同士が近く、ほぼ同じ高さまたは横並びなら間を埋める
+        if (dist < threshold * 2 && (Math.abs(a.x - b.x) < 200 || Math.abs(a.y - b.y) < 200)) {
+          const newWall = {
+            class: "wall",
+            x: (a.x + b.x) / 2,
+            y: (a.y + b.y) / 2,
+            width: Math.abs(a.x - b.x) + a.width,
+            height: Math.abs(a.y - b.y) + a.height
+          };
+          merged.push(newWall);
+        }
+      }
+    }
+    return merged;
+  }
+
+  // 2️⃣ 壁の欠損を線形方向で補完
+  function fillMissingWalls(predictions, step = 60) {
+    const walls = predictions.filter(p => p.class === "wall");
+    const added = [];
+  
+    for (let i = 0; i < walls.length; i++) {
+      for (let j = i + 1; j < walls.length; j++) {
+        const a = walls[i], b = walls[j];
+        // 同一直線上に近い場合は中間を埋める
+        const sameRow = Math.abs(a.y - b.y) < 20;
+        const sameCol = Math.abs(a.x - b.x) < 20;
+  
+        if (sameRow && Math.abs(a.x - b.x) > step) {
+          for (let x = Math.min(a.x, b.x) + step; x < Math.max(a.x, b.x); x += step) {
+            added.push({ class: "wall", x, y: a.y, width: step, height: a.height });
+          }
+        }
+        if (sameCol && Math.abs(a.y - b.y) > step) {
+          for (let y = Math.min(a.y, b.y) + step; y < Math.max(a.y, b.y); y += step) {
+            added.push({ class: "wall", x: a.x, y, width: a.width, height: step });
+          }
+        }
+      }
+    }
+    return [...predictions, ...added];
+  }
+
+  // 補完を適用
+  predictions = mergeCloseWalls(predictions);
+  predictions = fillMissingWalls(predictions);
+
+  // ======== 3D描画処理 ========
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(75, 1.5, 0.1, 1000);
   camera.position.set(5, 5, 5);
@@ -247,7 +308,6 @@ function draw3D(predictions, imageWidth, imageHeight) {
   floor.rotation.x = -Math.PI / 2;
   scene.add(floor);
 
-  // ✅ 不要なクラスをスキップ
   const ignoreList = ["left side", "right side", "under side", "top side"];
 
   predictions.forEach((pred) => {
@@ -255,7 +315,7 @@ function draw3D(predictions, imageWidth, imageHeight) {
 
     const geometry = new THREE.BoxGeometry(
       pred.width * scale,
-      1, // ← 壁の高さを上げる
+      1.5,
       pred.height * scale
     );
 
@@ -264,24 +324,24 @@ function draw3D(predictions, imageWidth, imageHeight) {
     const mesh = new THREE.Mesh(geometry, material);
 
     mesh.position.x = (pred.x - imageWidth / 2) * scale;
-    mesh.position.y = 0.75; // 壁の中央を床の上に
+    mesh.position.y = 0.75;
     mesh.position.z = -(pred.y - imageHeight / 2) * scale;
 
     scene.add(mesh);
   });
 
-  // ライトを追加
+  // ライト
   const light = new THREE.DirectionalLight(0xffffff, 1);
   light.position.set(5, 10, 7);
   scene.add(light);
-  scene.add(new THREE.AmbientLight(0x404040)); // 環境光
+  scene.add(new THREE.AmbientLight(0x404040));
 
-  // 描画ループ
   (function animate() {
     requestAnimationFrame(animate);
     controls.update();
     renderer.render(scene, camera);
   })();
 }
+
 
 });
