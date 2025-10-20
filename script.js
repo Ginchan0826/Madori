@@ -213,24 +213,35 @@ deleteBtn.addEventListener("click", () => {
     });
   }
 
+  import { PointerLockControls } from "three/addons/controls/PointerLockControls.js";
+
 function draw3D(predictions, imageWidth, imageHeight) {
+  // ======== Three.js 初期設定 ========
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(75, 1.5, 0.1, 1000);
-  camera.position.set(5, 5, 5);
-  camera.lookAt(0, 0, 0);
-
   const renderer = new THREE.WebGLRenderer({ antialias: true });
+
   const container = document.getElementById("three-container");
   container.innerHTML = "";
   renderer.setSize(container.clientWidth, container.clientHeight || 600);
   container.appendChild(renderer.domElement);
 
-  const controls = new window.OrbitControls(camera, renderer.domElement);
-  controls.enableDamping = true;
-  controls.dampingFactor = 0.25;
-  controls.maxPolarAngle = Math.PI / 2;
-
   const scale = 0.01;
+
+  // ======== 環境ライト ========
+  const light = new THREE.DirectionalLight(0xffffff, 1);
+  light.position.set(5, 10, 7);
+  scene.add(light);
+  scene.add(new THREE.AmbientLight(0x404040));
+
+  // ======== 床 ========
+  const floorGeometry = new THREE.PlaneGeometry(imageWidth * scale, imageHeight * scale);
+  const floorMaterial = new THREE.MeshLambertMaterial({ color: 0xf0f0f0 });
+  const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+  floor.rotation.x = -Math.PI / 2;
+  scene.add(floor);
+
+  // ======== 壁などのオブジェクト描画 ========
   const classColors = {
     wall: 0x999999,
     door: 0x8b4513,
@@ -239,47 +250,120 @@ function draw3D(predictions, imageWidth, imageHeight) {
     closet: 0xffa500,
     fusuma: 0xda70d6,
   };
-
-  // ✅ 床を追加
-  const floorGeometry = new THREE.PlaneGeometry(imageWidth * scale, imageHeight * scale);
-  const floorMaterial = new THREE.MeshLambertMaterial({ color: 0xf0f0f0 });
-  const floor = new THREE.Mesh(floorGeometry, floorMaterial);
-  floor.rotation.x = -Math.PI / 2;
-  scene.add(floor);
-
-  // ✅ 不要なクラスをスキップ
   const ignoreList = ["left side", "right side", "under side", "top side"];
+  const wallHeight = 2.5;
 
   predictions.forEach((pred) => {
     if (ignoreList.includes(pred.class)) return;
-
     const geometry = new THREE.BoxGeometry(
       pred.width * scale,
-      0.5, // ← 壁の高さを上げる
+      wallHeight,
       pred.height * scale
     );
-
     const color = classColors[pred.class] || 0xffffff;
     const material = new THREE.MeshLambertMaterial({ color });
     const mesh = new THREE.Mesh(geometry, material);
-
     mesh.position.x = (pred.x - imageWidth / 2) * scale;
-    mesh.position.y = 0.75; // 壁の中央を床の上に
+    mesh.position.y = wallHeight / 2;
     mesh.position.z = -(pred.y - imageHeight / 2) * scale;
-
     scene.add(mesh);
   });
 
-  // ライトを追加
-  const light = new THREE.DirectionalLight(0xffffff, 1);
-  light.position.set(5, 10, 7);
-  scene.add(light);
-  scene.add(new THREE.AmbientLight(0x404040)); // 環境光
+  // ======== プレイヤー（青い球体） ========
+  const playerGeo = new THREE.SphereGeometry(0.2, 16, 16);
+  const playerMat = new THREE.MeshStandardMaterial({ color: 0x3333ff });
+  const playerMesh = new THREE.Mesh(playerGeo, playerMat);
+  playerMesh.position.set(0, 0.2, 0);
+  scene.add(playerMesh);
 
-  // 描画ループ
+  // ======== カメラ操作設定 ========
+  const controls = new PointerLockControls(camera, renderer.domElement);
+  scene.add(controls.getObject());
+  document.addEventListener("click", () => controls.lock());
+
+  // ======== 視点切替UI ========
+  const toggleBtn = document.createElement("button");
+  toggleBtn.textContent = "視点切替 (F1)";
+  Object.assign(toggleBtn.style, {
+    position: "absolute",
+    top: "10px",
+    right: "10px",
+    zIndex: 10,
+    padding: "8px 12px",
+    background: "#008cff",
+    color: "#fff",
+    border: "none",
+    borderRadius: "6px",
+    cursor: "pointer",
+  });
+  document.body.appendChild(toggleBtn);
+
+  // ======== 移動ロジック ========
+  const moveSpeed = 0.05;
+  const velocity = new THREE.Vector3();
+  const direction = new THREE.Vector3();
+  const keys = { w: false, a: false, s: false, d: false };
+  let cameraMode = "first"; // "first" or "third"
+  const followDistance = 2.5;
+
+  document.addEventListener("keydown", (e) => {
+    const key = e.key.toLowerCase();
+    if (key in keys) keys[key] = true;
+    if (key === "f1") toggleView();
+  });
+  document.addEventListener("keyup", (e) => {
+    const key = e.key.toLowerCase();
+    if (key in keys) keys[key] = false;
+  });
+  toggleBtn.onclick = () => toggleView();
+
+  function toggleView() {
+    if (cameraMode === "first") {
+      cameraMode = "third";
+    } else {
+      cameraMode = "first";
+      controls.getObject().position.copy(playerMesh.position);
+    }
+  }
+
+  camera.position.set(0, 1.6, 0); // 初期視点高さ
+
+  function updatePlayer() {
+    direction.set(
+      Number(keys.d) - Number(keys.a),
+      0,
+      Number(keys.s) - Number(keys.w)
+    );
+    direction.normalize();
+
+    if (controls.isLocked) {
+      velocity.z = -direction.z * moveSpeed;
+      velocity.x = -direction.x * moveSpeed;
+      controls.moveRight(-velocity.x);
+      controls.moveForward(-velocity.z);
+      playerMesh.position.copy(controls.getObject().position);
+    }
+
+    // 三人称カメラ追従
+    if (cameraMode === "third") {
+      const behind = new THREE.Vector3(0, 1.6, followDistance);
+      behind.applyQuaternion(camera.quaternion);
+      const desiredPos = playerMesh.position.clone().add(behind);
+      camera.position.lerp(desiredPos, 0.1);
+      camera.lookAt(
+        playerMesh.position.clone().add(new THREE.Vector3(0, 1.0, 0))
+      );
+    } else {
+      camera.position.copy(
+        controls.getObject().position.clone().add(new THREE.Vector3(0, 1.6, 0))
+      );
+    }
+  }
+
+  // ======== メインループ ========
   (function animate() {
     requestAnimationFrame(animate);
-    controls.update();
+    updatePlayer();
     renderer.render(scene, camera);
   })();
 }
