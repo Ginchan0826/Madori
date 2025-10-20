@@ -215,26 +215,29 @@ deleteBtn.addEventListener("click", () => {
 
 function draw3D(predictions, imageWidth, imageHeight) {
   // ======== 補完ステップ ========
-  // 1️⃣ 壁の隙間を近接距離で補完
-  function mergeCloseWalls(predictions, threshold = 30) {
+  // 壁同士の角度・距離を見て補完を制限
+  function mergeCloseWalls(predictions, threshold = 25) {
     const walls = predictions.filter(p => p.class === "wall");
     const merged = [...predictions];
-  
+
     for (let i = 0; i < walls.length; i++) {
       for (let j = i + 1; j < walls.length; j++) {
         const a = walls[i], b = walls[j];
         const dx = a.x - b.x;
         const dy = a.y - b.y;
         const dist = Math.sqrt(dx * dx + dy * dy);
-  
-        // 壁同士が近く、ほぼ同じ高さまたは横並びなら間を埋める
-        if (dist < threshold * 2 && (Math.abs(a.x - b.x) < 200 || Math.abs(a.y - b.y) < 200)) {
+
+        // 条件: 近距離 & 向きがほぼ同じ（水平 or 垂直方向）
+        const similarHorizontal = Math.abs(a.y - b.y) < 15 && Math.abs(a.x - b.x) < a.width * 1.5;
+        const similarVertical = Math.abs(a.x - b.x) < 15 && Math.abs(a.y - b.y) < a.height * 1.5;
+
+        if (dist < threshold && (similarHorizontal || similarVertical)) {
           const newWall = {
             class: "wall",
             x: (a.x + b.x) / 2,
             y: (a.y + b.y) / 2,
-            width: Math.abs(a.x - b.x) + a.width,
-            height: Math.abs(a.y - b.y) + a.height
+            width: Math.max(a.width, b.width),
+            height: Math.max(a.height, b.height)
           };
           merged.push(newWall);
         }
@@ -243,26 +246,27 @@ function draw3D(predictions, imageWidth, imageHeight) {
     return merged;
   }
 
-  // 2️⃣ 壁の欠損を線形方向で補完
-  function fillMissingWalls(predictions, step = 60) {
+  // 線形補完も緩やかに：小さなギャップだけ埋める
+  function fillMissingWalls(predictions, step = 50) {
     const walls = predictions.filter(p => p.class === "wall");
     const added = [];
-  
+
     for (let i = 0; i < walls.length; i++) {
       for (let j = i + 1; j < walls.length; j++) {
         const a = walls[i], b = walls[j];
-        // 同一直線上に近い場合は中間を埋める
-        const sameRow = Math.abs(a.y - b.y) < 20;
-        const sameCol = Math.abs(a.x - b.x) < 20;
-  
-        if (sameRow && Math.abs(a.x - b.x) > step) {
+        const sameRow = Math.abs(a.y - b.y) < 10;
+        const sameCol = Math.abs(a.x - b.x) < 10;
+
+        // 横方向の短い隙間のみ埋める
+        if (sameRow && Math.abs(a.x - b.x) < 150 && Math.abs(a.x - b.x) > a.width) {
           for (let x = Math.min(a.x, b.x) + step; x < Math.max(a.x, b.x); x += step) {
-            added.push({ class: "wall", x, y: a.y, width: step, height: a.height });
+            added.push({ class: "wall", x, y: a.y, width: step * 0.8, height: a.height });
           }
         }
-        if (sameCol && Math.abs(a.y - b.y) > step) {
+        // 縦方向の短い隙間のみ埋める
+        if (sameCol && Math.abs(a.y - b.y) < 150 && Math.abs(a.y - b.y) > a.height) {
           for (let y = Math.min(a.y, b.y) + step; y < Math.max(a.y, b.y); y += step) {
-            added.push({ class: "wall", x: a.x, y, width: a.width, height: step });
+            added.push({ class: "wall", x: a.x, y, width: a.width, height: step * 0.8 });
           }
         }
       }
@@ -270,7 +274,7 @@ function draw3D(predictions, imageWidth, imageHeight) {
     return [...predictions, ...added];
   }
 
-  // 補完を適用
+  // 補完を適用（段階的に）
   predictions = mergeCloseWalls(predictions);
   predictions = fillMissingWalls(predictions);
 
@@ -313,12 +317,7 @@ function draw3D(predictions, imageWidth, imageHeight) {
   predictions.forEach((pred) => {
     if (ignoreList.includes(pred.class)) return;
 
-    const geometry = new THREE.BoxGeometry(
-      pred.width * scale,
-      1.5,
-      pred.height * scale
-    );
-
+    const geometry = new THREE.BoxGeometry(pred.width * scale, 1.5, pred.height * scale);
     const color = classColors[pred.class] || 0xffffff;
     const material = new THREE.MeshLambertMaterial({ color });
     const mesh = new THREE.Mesh(geometry, material);
