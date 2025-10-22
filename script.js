@@ -93,6 +93,7 @@ document.addEventListener("DOMContentLoaded", () => {
       loadingText.textContent = "分析中" + ".".repeat(dotCount);
     }, 500);
 
+    // roboflowのAPI設定
     const model = "floor-plan-japan";
     const version = 7;
     const apiKey = "E0aoexJvBDgvE3nb1jkc";
@@ -122,6 +123,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
+  // 保存時の表示メッセージ
   saveBtn.addEventListener("click", () => {
     if (!accessToken || !latestJson) return alert("ログインまたは解析が必要です");
 
@@ -213,6 +215,7 @@ deleteBtn.addEventListener("click", () => {
     });
   }
 
+  // Three.jsの3D表示クラス
 function draw3D(predictions, imageWidth, imageHeight) {
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(75, 1.5, 0.1, 1000);
@@ -240,22 +243,22 @@ function draw3D(predictions, imageWidth, imageHeight) {
     fusuma: 0xda70d6,
   };
 
-  // ✅ 床を追加
+  // 床を追加
   const floorGeometry = new THREE.PlaneGeometry(imageWidth * scale, imageHeight * scale);
   const floorMaterial = new THREE.MeshLambertMaterial({ color: 0xf0f0f0 });
   const floor = new THREE.Mesh(floorGeometry, floorMaterial);
   floor.rotation.x = -Math.PI / 2;
   scene.add(floor);
 
-  // ✅ 不要なクラスをスキップ
+  // 不要なクラスを非表示にする
   const ignoreList = ["left side", "right side", "under side", "top side"];
 
   predictions.forEach((pred) => {
     if (ignoreList.includes(pred.class)) return;
-
+    // 壁の高さ設定
     const geometry = new THREE.BoxGeometry(
       pred.width * scale,
-      0.5, // ← 壁の高さを上げる
+      0.5, // 壁の高さの数値
       pred.height * scale
     );
 
@@ -270,7 +273,7 @@ function draw3D(predictions, imageWidth, imageHeight) {
     scene.add(mesh);
   });
 
-  // ライトを追加
+  // 明るさ,ライトを追加
   const light = new THREE.DirectionalLight(0xffffff, 1);
   light.position.set(5, 10, 7);
   scene.add(light);

@@ -32,7 +32,7 @@ body {
   flex-basis: 70%; /* PC版の右ペイン幅 */
   display: flex;
   flex-direction: column;
-  flex-grow: 1; /* 残りのスペースを埋める */
+  flex-grow: 1; /* 残りのスペースを埋める用 */
 }
 
 .left-pane h1,
