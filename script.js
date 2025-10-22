@@ -6,6 +6,8 @@ function handleCredentialResponse(response) {
   requestAccessToken();
 }
 
+// グーグルにログインしないとデータの保存が出来ません
+// グーグル認証用にAPIキーを設定。
 function requestAccessToken() {
   google.accounts.oauth2.initTokenClient({
     client_id: '479474446026-kej6f40kvfm6dsuvfeo5d4fm87c6god4.apps.googleusercontent.com',
@@ -94,6 +96,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }, 500);
 
     // roboflowのAPI設定
+    // 解析した結果はJSON形式で帰ってきます
     const model = "floor-plan-japan";
     const version = 7;
     const apiKey = "E0aoexJvBDgvE3nb1jkc";
@@ -124,6 +127,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // 保存時の表示メッセージ
+  // DBをグーグルにしているのでログインが必要
   saveBtn.addEventListener("click", () => {
     if (!accessToken || !latestJson) return alert("ログインまたは解析が必要です");
 
@@ -152,6 +156,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
+  // ドライブからデータ読み込み時のメッセージ 
   loadBtn.addEventListener("click", () => {
     const fileId = fileSelect.value;
     if (!accessToken || !fileId) return alert("ログインまたはファイルを選択してください");
@@ -171,6 +176,8 @@ document.addEventListener("DOMContentLoaded", () => {
   });
   const deleteBtn = document.getElementById("deleteBtn");
 
+  // ファイル削除時のメッセージ
+  // グーグルドライブに直接アクセスしています
 deleteBtn.addEventListener("click", () => {
   const fileId = fileSelect.value;
   if (!accessToken || !fileId) return alert("ログインまたはファイルを選択してください");
@@ -216,6 +223,7 @@ deleteBtn.addEventListener("click", () => {
   }
 
   // Three.jsの3D表示クラス
+  // roboflowから帰ってきたJSOn情報から、位置、縦横のサイズ、種類のデータをオブジェクト化します
 function draw3D(predictions, imageWidth, imageHeight) {
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(75, 1.5, 0.1, 1000);
