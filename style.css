@@ -122,7 +122,7 @@ button:disabled {
 /* 3D表示エリア */
 .three-canvas {
   flex-grow: 1;
-  background: #ddd;
+  background: #ffffff;
   border-radius: 8px;
   overflow: hidden; /* Canvasがはみ出さないように */
   min-height: 300px; /* スマホで最低限の高さを確保 */

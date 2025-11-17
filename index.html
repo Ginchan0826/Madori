@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <title>間取り分析＆3D表示</title>
+  <title>間取り分析＆3D表示（ユーザー選択モード）</title>
   <link rel="stylesheet" href="style.css" />
 
   <script type="importmap">
@@ -15,24 +15,34 @@
   </script>
 
   <script type="module">
-    import * as THREE from 'three'; // インポートマップのおかげで 'three' で読み込める
-    import { OrbitControls } from 'three/addons/controls/OrbitControls.js'; // 'three/addons/' のマッピングを使用
-
-    // THREE と OrbitControls をグローバルスコープに公開
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
     window.THREE = THREE;
     window.OrbitControls = OrbitControls;
   </script>
 
   <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
+
 <body>
   <div class="container">
     <div class="left-pane">
       <h1>間取り画像を選んで分析</h1>
+
       <input type="file" id="imageInput" accept="image/*" />
-      <input id="filenameInput" type="text" placeholder="保存名を入力" class="text-input" />
+
+      <select id="modelSelector" class="select-input">
+        <option value="outer">外枠モデル（Base）</option>
+        <option value="inner">内部モデル（Main）</option>
+        <option value="extra">補完モデル（LowConfidence）</option>
+        <option value="all">3モデル合成モード（ALL）</option>
+      </select>
+
       <button id="analyzeBtn">Roboflowで分析</button>
+
+      <input id="filenameInput" type="text" placeholder="保存名を入力" class="text-input" />
       <button id="saveBtn" class="btn-save">Driveに保存</button>
+
       <select id="fileSelect" class="select-input">
         <option value="">読み込むファイルを選択</option>
       </select>
@@ -57,9 +67,9 @@
   </div>
 
   <div id="g_id_onload"
-       data-client_id="479474446026-kej6f40kvfm6dsuvfeo5d4fm87c6god4.apps.googleusercontent.com"
-       data-callback="handleCredentialResponse"
-       data-scope="https://www.googleapis.com/auth/drive.file">
+      data-client_id="479474446026-kej6f40kvfm6dsuvfeo5d4fm87c6god4.apps.googleusercontent.com"
+      data-callback="handleCredentialResponse"
+      data-scope="https://www.googleapis.com/auth/drive.file">
   </div>
   <div class="g_id_signin" data-type="standard"></div>
 
