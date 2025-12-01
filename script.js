@@ -1,3 +1,4 @@
+
 let accessToken = null;
 let latestJson = null;
 
@@ -67,76 +68,97 @@ document.addEventListener("DOMContentLoaded", () => {
     const areaB = b.width * b.height;
     const union = areaA + areaB - intersect;
 
+    if (union <= 0) return 0;
     return intersect / union;
   }
 
-  /* 壁補完（Wall ↔ Fusuma の隙間を埋める）*/
-function fillWallGaps(preds) {
-  const walls = preds.filter(p =>
-    p.class === "wall" || p.class === "fusuma"
-  );
+  /* 壁補完（Wall ↔ Fusuma の隙間を埋める）-- 修正版：Wall↔Wallは無視 */
+  function fillWallGaps(preds, maxDist = 40) {
+    const walls = preds.filter(p => p.class === "wall" || p.class === "fusuma");
+    const filled = [];
 
-  const filled = [];
+    for (let i = 0; i < walls.length; i++) {
+      for (let j = i + 1; j < walls.length; j++) {
+        const a = walls[i];
+        const b = walls[j];
 
-  for (let i = 0; i < walls.length; i++) {
-    for (let j = i + 1; j < walls.length; j++) {
-      const a = walls[i];
-      const b = walls[j];
+        // ★ 補完対象は「Wall ↔ Fusuma」のみ
+        const isPair =
+          (a.class === "wall" && b.class === "fusuma") ||
+          (a.class === "fusuma" && b.class === "wall");
 
-      // ★ 補完対象は「Wall ↔ Fusuma」のみ
-      const isPair =
-        (a.class === "wall" && b.class === "fusuma") ||
-        (a.class === "fusuma" && b.class === "wall");
+        if (!isPair) continue; // Wall↔Wall / Fusuma↔Fusuma は無視
 
-      if (!isPair) continue; // ← ここで Wall↔Wall や Fusuma↔Fusuma を拒否
+        const dx = a.x - b.x;
+        const dy = a.y - b.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
 
-      const dx = a.x - b.x;
-      const dy = a.y - b.y;
-      const dist = Math.sqrt(dx * dx + dy * dy);
+        // 距離が近いときだけ補完（maxDist px以内）
+        if (dist < maxDist) {
+          const midX = (a.x + b.x) / 2;
+          const midY = (a.y + b.y) / 2;
 
-      // 距離が近いときだけ補完
-      if (dist < 40) {
-        const midX = (a.x + b.x) / 2;
-        const midY = (a.y + b.y) / 2;
+          // 幅/高さは2点の差分に小さな余裕を持たせる
+          const newWidth = Math.max(4, Math.abs(a.x - b.x) + 4);
+          const newHeight = Math.max(4, Math.abs(a.y - b.y) + 4);
 
-        filled.push({
-          class: "wall",
-          x: midX,
-          y: midY,
-          width: Math.max(5, Math.abs(a.x - b.x)),
-          height: Math.max(5, Math.abs(a.y - b.y)),
-          confidence: 0.99
-        });
+          filled.push({
+            class: "wall",
+            x: midX,
+            y: midY,
+            width: newWidth,
+            height: newHeight,
+            confidence: 0.99
+          });
+        }
       }
     }
+    return filled;
   }
 
-  return filled;
-}
-
-
   /* 重なり優先ルール適用（チラつき防止）*/
+  // ルール：
+  // - Wall vs Closet/Door -> Wall 優先（Closet/Door を非表示）
+  // - Wall vs Window/Glass door -> Window/Glass door 優先（Wall を非表示）
   function applyPriority(preds) {
     const result = [];
 
-    preds.forEach(p => {
+    // 作業用コピー（参照整合性保つため）
+    const items = preds.slice();
+
+    items.forEach(p => {
       let skip = false;
 
-      preds.forEach(other => {
-        if (p === other) return;
-        if (calcIoU(p, other) < 0.2) return;
+      for (let k = 0; k < items.length; k++) {
+        const other = items[k];
+        if (p === other) continue;
 
-        // Wall が Closet / Door に勝つ
+        // 重なり判定（小さめ閾値）
+        if (calcIoU(p, other) < 0.15) continue;
+
+        // Closet/Door が Wall と重なった場合は Closet/Door を skip（Wall が勝つ）
         if ((p.class === "closet" || p.class === "door") && other.class === "wall") {
           skip = true;
+          break;
         }
 
-        // Window / Glass door が Wall に勝つ
-        if (p.class === "wall" && 
-            (other.class === "window" || other.class === "glass door")) {
+        // Wall が Window/Glass door と重なった場合は Wall を skip（Window が勝つ）
+        if (p.class === "wall" && (other.class === "window" || other.class === "glass door")) {
           skip = true;
+          break;
         }
-      });
+
+        // 追加のルール：もし同一カテゴリでほぼ重複（高IoU）、信頼度低い方を排除
+        if (p.class === other.class) {
+          const iou = calcIoU(p, other);
+          if (iou > 0.6) {
+            if ((p.confidence || 0) < (other.confidence || 0)) {
+              skip = true;
+              break;
+            }
+          }
+        }
+      }
 
       if (!skip) result.push(p);
     });
@@ -198,9 +220,20 @@ function fillWallGaps(preds) {
     const inner = await runRoboflow(API.inner, file);
     const extra = await runRoboflow(API.extra, file);
 
-    if (!outer.predictions.length) return inner;
+    // outer から base オブジェクトを探す（外枠）
+    const outerBase = (outer && outer.predictions) ? outer.predictions.find(p => p.class === "base") : null;
 
-    const outerBox = outer.predictions[0];
+    // outer に base が無ければ inner を基準にする（フォールバック）
+    if (!outerBase) {
+      // filter out base-ish classes if any
+      const fallbackInner = inner;
+      return {
+        image: fallbackInner.image || (outer && outer.image) || (extra && extra.image) || { width: 100, height: 100 },
+        predictions: fallbackInner.predictions ? fallbackInner.predictions.filter(p => p.class !== "base" && p.class !== "outer") : []
+      };
+    }
+
+    const outerBox = outerBase;
 
     function isInside(pred) {
       return (
@@ -215,26 +248,29 @@ function fillWallGaps(preds) {
       return pred.class !== "base" && pred.class !== "outer";
     }
 
-    const filteredInner = inner.predictions.filter(p => isInside(p) && notBase(p));
-    const filteredExtra = extra.predictions.filter(p => isInside(p) && notBase(p));
+    const filteredInner = (inner.predictions || []).filter(p => isInside(p) && notBase(p));
+    const filteredExtra = (extra.predictions || []).filter(p => isInside(p) && notBase(p));
 
-    let finalPreds = [...outer.predictions, ...filteredInner];
+    // finalPreds は outer の base を最初に含める（床生成用）
+    let finalPreds = [outerBox, ...filteredInner];
 
-    // extra（補完モデル）の IoU 重複チェック
+    // extra（補完モデル）の IoU 重複チェック（inner優先）
     filteredExtra.forEach(e => {
       let duplicate = false;
 
-      filteredInner.forEach(i => {
-        if (e.class === i.class && calcIoU(e, i) > 0.4) {
+      for (let i = 0; i < filteredInner.length; i++) {
+        const ii = filteredInner[i];
+        if (e.class === ii.class && calcIoU(e, ii) > 0.4) {
           duplicate = true;
+          break;
         }
-      });
+      }
 
       if (!duplicate) finalPreds.push(e);
     });
 
-    // 壁隙間補完
-    const additions = fillWallGaps(finalPreds);
+    // 壁隙間補完（Wall ↔ Fusuma のみ）
+    const additions = fillWallGaps(finalPreds, 40);
     finalPreds.push(...additions);
 
     // 優先ルール適用（重なり調整）
@@ -246,7 +282,7 @@ function fillWallGaps(preds) {
     };
   }
 
-  /* ★ メイン解析ボタン */
+  /* ★ メイン解析ボタン（既存の analyze ボタンと統合） */
   analyzeBtn.addEventListener("click", async () => {
     if (!selectedFile) {
       alert("画像を選択してください");
@@ -271,6 +307,7 @@ function fillWallGaps(preds) {
       else if (mode === "inner") result = await runRoboflow(API.inner, selectedFile);
       else if (mode === "extra") result = await runRoboflow(API.extra, selectedFile);
       else if (mode === "all")   result = await runAllModels(selectedFile);
+      else                       result = await runAllModels(selectedFile);
 
       latestJson = result;
       resultPre.textContent = JSON.stringify(result, null, 2);
@@ -278,10 +315,11 @@ function fillWallGaps(preds) {
       openContainer(resultContainer);
       closeContainer(uploadContainer);
 
-      draw3D(result.predictions, result.image.width, result.image.height);
+      draw3D(result.predictions, result.image && result.image.width ? result.image.width : 100, result.image && result.image.height ? result.image.height : 100);
 
     } catch (err) {
-      alert("エラー: " + err.message);
+      console.error(err);
+      alert("エラー: " + (err.message || err));
     } finally {
       clearInterval(loadingInterval);
       loadingText.textContent = "";
@@ -314,6 +352,7 @@ function fillWallGaps(preds) {
       alert('保存完了');
       updateFileSelect();
     }).catch(err => {
+      console.error(err);
       alert('保存失敗');
     });
   });
@@ -332,6 +371,9 @@ function fillWallGaps(preds) {
         resultPre.textContent = JSON.stringify(data, null, 2);
         openContainer(resultContainer);
         draw3D(data.predictions, data.image.width, data.image.height);
+      }).catch(err => {
+        console.error(err);
+        alert('読み込み失敗');
       });
   });
 
@@ -353,6 +395,9 @@ function fillWallGaps(preds) {
         } else {
           alert("削除失敗");
         }
+      }).catch(err => {
+        console.error(err);
+        alert("削除エラー");
       });
   });
 
@@ -366,35 +411,47 @@ function fillWallGaps(preds) {
       .then(res => res.json())
       .then(fileList => {
         fileSelect.innerHTML = `<option value="">読み込むファイルを選択</option>`;
-        fileList.files.forEach(file => {
+        (fileList.files || []).forEach(file => {
           const option = document.createElement("option");
           option.value = file.id;
           option.textContent = file.name;
           fileSelect.appendChild(option);
         });
+      }).catch(err => {
+        console.error(err);
       });
   }
 
-  /* 3D描画 */
+  /* 3D描画（床を base から生成、オブジェクト高さ/厚み調整、背景白固定） */
   function draw3D(predictions, imageWidth, imageHeight) {
-    const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0xffffff); // ★背景色を白に
+    // 安全処理
+    predictions = predictions || [];
 
-    const camera = new THREE.PerspectiveCamera(75, 1.5, 0.1, 1000);
+    // scene
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0xffffff); // 背景を白に
+
+    // camera
+    const camera = new THREE.PerspectiveCamera(75, containerAspect(imageWidth), 0.1, 1000);
     camera.position.set(5, 5, 5);
 
+    // renderer
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     const container = document.getElementById("three-container");
     container.innerHTML = "";
     renderer.setSize(container.clientWidth, container.clientHeight || 600);
-    renderer.setClearColor(0xffffff, 1); // ★白背景 Fix
+    renderer.setClearColor(0xffffff, 1);
     container.appendChild(renderer.domElement);
 
+    // controls
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.maxPolarAngle = Math.PI / 2;
 
+    // scale
     const scale = 0.01;
+
+    // colors
     const colors = {
       wall: 0x999999,
       door: 0x8b4513,
@@ -404,45 +461,110 @@ function fillWallGaps(preds) {
       fusuma: 0xda70d6,
     };
 
-    const floorGeo = new THREE.PlaneGeometry(imageWidth * scale, imageHeight * scale);
-    const floorMat = new THREE.MeshLambertMaterial({ color: 0xffffff });
-    const floor = new THREE.Mesh(floorGeo, floorMat);
-    floor.rotation.x = -Math.PI / 2;
-    scene.add(floor);
-
+    // ignore リスト（base は描画しない。base は床生成に使用）
     const ignore = ["left side", "right side", "under side", "top side", "base", "outer"];
 
-    predictions.forEach(pred => {
+    // まず base を探して床を作る（base があるときだけ）
+    const baseObj = predictions.find(p => p.class === "base");
+
+    if (baseObj) {
+      const floorWidth = baseObj.width * scale;
+      const floorHeight = baseObj.height * scale;
+      const floorGeo = new THREE.PlaneGeometry(floorWidth, floorHeight);
+      const floorMat = new THREE.MeshLambertMaterial({ color: 0xffffff });
+      const floor = new THREE.Mesh(floorGeo, floorMat);
+      floor.rotation.x = -Math.PI / 2;
+      floor.position.x = (baseObj.x - imageWidth / 2) * scale;
+      floor.position.z = -(baseObj.y - imageHeight / 2) * scale;
+      floor.position.y = 0;
+      scene.add(floor);
+    } else {
+      // base が無ければ従来どおり全体を覆う床（フォールバック）
+      const floorGeo = new THREE.PlaneGeometry(imageWidth * scale, imageHeight * scale);
+      const floorMat = new THREE.MeshLambertMaterial({ color: 0xffffff });
+      const floor = new THREE.Mesh(floorGeo, floorMat);
+      floor.rotation.x = -Math.PI / 2;
+      scene.add(floor);
+    }
+
+    // 描画用に predictions をコピーして base を除外（床は既に作った）
+    let drawPreds = predictions.filter(p => p.class !== "base" && p.class !== "outer");
+
+    // オブジェクトの高さ・厚み調整
+    drawPreds.forEach(pred => {
+      // skip ignored classes early
       if (ignore.includes(pred.class)) return;
 
-      const geo = new THREE.BoxGeometry(
-        pred.width * scale,
-        0.5,
-        pred.height * scale
-      );
+      // デフォルトの厚み（高さ）と追加奥行き
+      let thicknessY = 0.5;
+      let extraZ = 0;
 
+      // Closet / Door をほんの少し低く
+      if (pred.class === "closet" || pred.class === "door") {
+        thicknessY = 0.35; // 低め
+      }
+
+      // Window / Glass door は厚め＆少し高く
+      if (pred.class === "window" || pred.class === "glass door") {
+        thicknessY = 0.6; // 高め
+        // extraZ は「ピクセル単位ではなく scale を考慮」して加える
+        extraZ = 0.02 / scale; // pred.height に加える分（後で * scale される）
+      }
+
+      // ここではジオメトリを作らず、後でまとめてメッシュ生成するために
+      // pred に調整値を付与しておく
+      pred._thicknessY = thicknessY;
+      pred._extraZ = extraZ;
+    });
+
+    // さらに優先ルールを適用してチラつき防止（Wall vs Closet/Door, Wall vs Window/Glass door）
+    drawPreds = applyPriority(drawPreds);
+
+    // 最後に各オブジェクトをメッシュ化してシーンに追加
+    drawPreds.forEach(pred => {
+      if (ignore.includes(pred.class)) return;
+
+      const thicknessY = pred._thicknessY !== undefined ? pred._thicknessY : 0.5;
+      const extraZ = pred._extraZ !== undefined ? pred._extraZ : 0;
+
+      const width = pred.width * scale;
+      // pred.height is vertical size in image — interpreted as depth in 3D here
+      const depth = (pred.height * scale) + (extraZ * scale);
+
+      const geo = new THREE.BoxGeometry(width, thicknessY, depth);
       const color = colors[pred.class] || 0xffffff;
       const mat = new THREE.MeshLambertMaterial({ color });
       const mesh = new THREE.Mesh(geo, mat);
 
       mesh.position.x = (pred.x - imageWidth / 2) * scale;
-      mesh.position.y = 0.75;
+      mesh.position.y = thicknessY / 2; // 床からの高さ（中心位置）
       mesh.position.z = -(pred.y - imageHeight / 2) * scale;
 
       scene.add(mesh);
     });
 
+    // ライティング
     const light = new THREE.DirectionalLight(0xffffff, 1);
     light.position.set(5, 10, 7);
     scene.add(light);
     scene.add(new THREE.AmbientLight(0x404040));
 
+    // アニメーションループ
     function animate() {
       requestAnimationFrame(animate);
       controls.update();
       renderer.render(scene, camera);
     }
     animate();
+
+    // ヘルパー：container のアスペクト比をカメラ設定に合わせる
+    function containerAspect(imgWidth) {
+      // 右ペインの DOM 幅に基づくアスペクト比を算出（簡易）
+      const cont = document.getElementById("three-container");
+      const w = cont.clientWidth || 800;
+      const h = cont.clientHeight || 600;
+      return w / h;
+    }
   }
 
-});
+}); // DOMContentLoaded end
